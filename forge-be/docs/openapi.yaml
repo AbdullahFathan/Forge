@@ -1,8 +1,8 @@
 openapi: 3.0.3
 info:
   title: WorkSpace API
-  version: "1.0.0"
-  description: Phase 1 Foundation & Auth
+  version: "1.1.0"
+  description: Phase 2 Project and Task Core
 servers:
   - url: /
 tags:
@@ -10,6 +10,8 @@ tags:
   - name: auth
   - name: users
   - name: departments
+  - name: projects
+  - name: tasks
 components:
   securitySchemes:
     BearerAuth:
@@ -257,3 +259,280 @@ paths:
       responses:
         "200":
           description: Deleted
+  /projects:
+    get:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: List projects visible to the caller
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Paged projects with completionPercent
+        "401":
+          description: Unauthorized
+    post:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: Create project (project.create); owner is added as LEAD
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, startDate, targetEndDate, ownerId]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                status: { type: string, enum: [DRAFT, ACTIVE, ON_HOLD, COMPLETED, ARCHIVED] }
+                priority: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+                startDate: { type: string, format: date }
+                targetEndDate: { type: string, format: date }
+                ownerId: { type: string, format: uuid }
+                departmentId: { type: string, format: uuid }
+                tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Validation
+        "403":
+          description: Forbidden
+  /projects/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: Project summary (progress, task counts, members, empty activity)
+      responses:
+        "200":
+          description: Summary
+        "403":
+          description: Forbidden
+    patch:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: Update project (owner, Lead, Admin, Super Admin)
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Illegal lifecycle or dates
+    delete:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: Archive project (project.delete) — status ARCHIVED + soft delete
+      responses:
+        "200":
+          description: Archived
+  /projects/{id}/members:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: List project members
+      responses:
+        "200":
+          description: Members
+    post:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: Add member (LEAD, MEMBER, VIEWER)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId: { type: string, format: uuid }
+                role: { type: string, enum: [LEAD, MEMBER, VIEWER] }
+      responses:
+        "201":
+          description: Created
+        "409":
+          description: Duplicate member
+  /projects/{id}/members/{userId}:
+    delete:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: Remove member (cannot remove owner without transfer)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Removed
+  /projects/{id}/tasks:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: List tasks (filters status, assignee, priority, dueFrom, dueTo, label, include=subtasks)
+      responses:
+        "200":
+          description: Paged tasks
+    post:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: Create task (task.manage + project manage)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                parentTaskId: { type: string, format: uuid }
+                status: { type: string }
+                priority: { type: string }
+                estimatedHours: { type: number }
+                startDate: { type: string, format: date }
+                dueDate: { type: string, format: date }
+                labels:
+                  type: array
+                  items: { type: string }
+                position: { type: integer }
+                assigneeIds:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+  /tasks/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: Task detail with dependsOn, dependents, warnings
+      parameters:
+        - in: query
+          name: include
+          schema: { type: string, enum: [subtasks] }
+      responses:
+        "200":
+          description: Task
+    patch:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: Update task; assignees may change status and position only
+      responses:
+        "200":
+          description: Updated
+        "400":
+          description: Status, depth, or Finish-to-Start guard
+    delete:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: Soft-delete task
+      responses:
+        "200":
+          description: Deleted
+  /tasks/{id}/dependencies:
+    post:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: Add Finish-to-Start dependency (same project, no cycles)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dependsOnTaskId]
+              properties:
+                dependsOnTaskId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Created
+  /tasks/{id}/dependencies/{depId}:
+    delete:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: Remove dependency
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: path
+          name: depId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Removed
+  /tasks/{id}/comments:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: List comments (no edit/delete in MVP)
+      responses:
+        "200":
+          description: Comments
+    post:
+      tags: [tasks]
+      security: [{ BearerAuth: [] }]
+      summary: Add progress comment (assignee or project manager)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+      responses:
+        "201":
+          description: Created

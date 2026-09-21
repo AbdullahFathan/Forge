@@ -35,7 +35,7 @@ func main() {
 	if err != nil {
 		log.Fatal("database", zap.Error(err))
 	}
-	if err := migrate.Auto(db); err != nil {
+	if err := migrate.Up(db); err != nil {
 		log.Fatal("migrate", zap.Error(err))
 	}
 

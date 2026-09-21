@@ -22,4 +22,6 @@ func TestSwaggerAndHealthHandlers(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "/auth/login")
 	require.Contains(t, rec.Body.String(), "/users")
 	require.Contains(t, rec.Body.String(), "/departments")
+	require.Contains(t, rec.Body.String(), "/projects")
+	require.Contains(t, rec.Body.String(), "/tasks/{id}")
 }
