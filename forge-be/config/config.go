@@ -34,6 +34,17 @@ type Config struct {
 	RustFSSecretKey string
 	RustFSBucket    string
 	RustFSUseSSL    bool
+
+	DBMaxOpenConns    int
+	DBMaxIdleConns    int
+	DBConnMaxLifetime time.Duration
+
+	SMTPHost     string
+	SMTPPort     string
+	SMTPUser     string
+	SMTPPassword string
+	SMTPFrom     string
+	SMTPStartTLS bool
 }
 
 func Load() (*Config, error) {
@@ -57,6 +68,14 @@ func Load() (*Config, error) {
 		RustFSSecretKey:        os.Getenv("RUSTFS_SECRET_KEY"),
 		RustFSBucket:           envOr("RUSTFS_BUCKET", "workspace"),
 		RustFSUseSSL:           envBool("RUSTFS_USE_SSL", false),
+		DBMaxOpenConns:         envInt("DB_MAX_OPEN_CONNS", 25),
+		DBMaxIdleConns:         envInt("DB_MAX_IDLE_CONNS", 5),
+		SMTPHost:               os.Getenv("SMTP_HOST"),
+		SMTPPort:               envOr("SMTP_PORT", "587"),
+		SMTPUser:               os.Getenv("SMTP_USER"),
+		SMTPPassword:           os.Getenv("SMTP_PASSWORD"),
+		SMTPFrom:               os.Getenv("SMTP_FROM"),
+		SMTPStartTLS:           envBool("SMTP_STARTTLS", true),
 	}
 
 	var err error
@@ -65,6 +84,10 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	cfg.JWTRefreshTTL, err = envDuration("JWT_REFRESH_TTL", 7*24*time.Hour)
+	if err != nil {
+		return nil, err
+	}
+	cfg.DBConnMaxLifetime, err = envDuration("DB_CONN_MAX_LIFETIME", time.Hour)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +134,18 @@ func (c *Config) validate() error {
 		return fmt.Errorf("BOOTSTRAP_ADMIN_PASSWORD must be at least 8 characters")
 	}
 	return nil
+}
+
+func envInt(key string, fallback int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+	return n
 }
 
 func envOr(key, fallback string) string {

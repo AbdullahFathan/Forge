@@ -30,4 +30,9 @@ func TestSwaggerAndHealthHandlers(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "/notifications")
 	require.Contains(t, rec.Body.String(), "/reports/project-status")
 	require.Contains(t, rec.Body.String(), "/dashboards/executive")
+	require.Contains(t, rec.Body.String(), "/ready")
+	require.Contains(t, rec.Body.String(), "/roles")
+	require.Contains(t, rec.Body.String(), "/permissions")
+	require.Contains(t, rec.Body.String(), "VALIDATION_ERROR")
+	require.Contains(t, rec.Body.String(), "emailNotificationsEnabled")
 }

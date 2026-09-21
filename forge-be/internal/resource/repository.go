@@ -152,6 +152,19 @@ func (r *Repository) CreateHoliday(h *Holiday) error {
 	return r.db.Create(h).Error
 }
 
+func (r *Repository) GetHoliday(id uuid.UUID) (*Holiday, error) {
+	var h Holiday
+	err := r.db.First(&h, "id = ?", id).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, apperr.ErrNotFound.WithMessage("holiday not found")
+	}
+	return &h, err
+}
+
+func (r *Repository) SaveHoliday(h *Holiday) error {
+	return r.db.Save(h).Error
+}
+
 func (r *Repository) GetHolidayByDate(d time.Time) (*Holiday, error) {
 	var h Holiday
 	err := r.db.Where("date = ?", DateUTC(d)).First(&h).Error

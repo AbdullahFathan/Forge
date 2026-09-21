@@ -31,7 +31,11 @@ func main() {
 	}
 	defer log.Sync()
 
-	db, err := database.Connect(cfg.DatabaseDSN, cfg.IsLocal(), log)
+	db, err := database.Connect(cfg.DatabaseDSN, cfg.IsLocal(), log, database.Pool{
+		MaxOpen:         cfg.DBMaxOpenConns,
+		MaxIdle:         cfg.DBMaxIdleConns,
+		ConnMaxLifetime: cfg.DBConnMaxLifetime,
+	})
 	if err != nil {
 		log.Fatal("database", zap.Error(err))
 	}
@@ -90,8 +94,13 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	log.Info("shutdown started")
 	jobCancel()
 	shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shCancel()
-	_ = httpServer.Shutdown(shCtx)
+	if err := httpServer.Shutdown(shCtx); err != nil {
+		log.Error("http shutdown", zap.Error(err))
+	} else {
+		log.Info("http shutdown complete")
+	}
 }

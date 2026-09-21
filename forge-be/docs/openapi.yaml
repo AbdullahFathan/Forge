@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: WorkSpace API
   version: "1.1.0"
-  description: Phase 4 Audit, Notifications, Reports, Dashboards
+  description: Phase 5 MVP API — auth, projects, resources, audit, notifications, reports, dashboards, roles
 servers:
   - url: /
 tags:
@@ -10,6 +10,7 @@ tags:
   - name: auth
   - name: users
   - name: departments
+  - name: roles
   - name: projects
   - name: tasks
   - name: resources
@@ -34,10 +35,25 @@ components:
           type: object
           properties:
             code:
-              type: string
+              $ref: "#/components/schemas/ErrorCode"
             message:
               type: string
             details: {}
+    ErrorCode:
+      type: string
+      description: HTTP envelope error codes from pkg/apperr. OVER_ALLOCATED is a warning on 200 allocation responses, not this enum.
+      enum:
+        - INVALID_CREDENTIALS
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - USER_INACTIVE
+        - NOT_FOUND
+        - CONFLICT
+        - VALIDATION_ERROR
+        - LAST_SUPER_ADMIN
+        - RATE_LIMITED
+        - INTERNAL_ERROR
+        - INVALID_TOKEN
     User:
       type: object
       properties:
@@ -50,6 +66,7 @@ components:
         departmentName: { type: string }
         capacityHoursPerDay: { type: integer }
         isActive: { type: boolean }
+        emailNotificationsEnabled: { type: boolean }
         skills:
           type: array
           items: { type: string }
@@ -66,10 +83,19 @@ paths:
   /health:
     get:
       tags: [health]
-      summary: Liveness
+      summary: Liveness (process up, no dependency checks)
       responses:
         "200":
           description: OK
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness (Postgres + Redis ping)
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Not ready
   /auth/login:
     post:
       tags: [auth]
@@ -122,7 +148,7 @@ paths:
     patch:
       tags: [users]
       security: [{ BearerAuth: [] }]
-      summary: Update own name or password
+      summary: Update own name, password, or emailNotificationsEnabled
       requestBody:
         content:
           application/json:
@@ -132,6 +158,7 @@ paths:
                 name: { type: string }
                 password: { type: string }
                 currentPassword: { type: string }
+                emailNotificationsEnabled: { type: boolean }
       responses:
         "200":
           description: Updated profile
@@ -732,6 +759,28 @@ paths:
         "201":
           description: Created
   /resources/holidays/{id}:
+    patch:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Update holiday date or name
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date: { type: string, format: date }
+                name: { type: string }
+      responses:
+        "200":
+          description: Updated
+        "409":
+          description: Date already used
     delete:
       tags: [resources]
       security: [{ BearerAuth: [] }]
@@ -942,3 +991,81 @@ paths:
       responses:
         "200":
           description: Assigned tasks, weekly load, latest notifications
+  /permissions:
+    get:
+      tags: [roles]
+      security: [{ BearerAuth: [] }]
+      summary: List permission catalog (role.manage)
+      responses:
+        "200":
+          description: Permission codes
+  /roles:
+    get:
+      tags: [roles]
+      security: [{ BearerAuth: [] }]
+      summary: List roles
+      responses:
+        "200":
+          description: System and custom roles
+    post:
+      tags: [roles]
+      security: [{ BearerAuth: [] }]
+      summary: Create custom role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, permissionCodes]
+              properties:
+                name: { type: string }
+                code: { type: string }
+                permissionCodes:
+                  type: array
+                  items: { type: string }
+      responses:
+        "201":
+          description: Created
+  /roles/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [roles]
+      security: [{ BearerAuth: [] }]
+      summary: Get role
+      responses:
+        "200":
+          description: Role
+    patch:
+      tags: [roles]
+      security: [{ BearerAuth: [] }]
+      summary: Update custom role (system roles forbidden)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                permissionCodes:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Updated
+        "403":
+          description: System role
+    delete:
+      tags: [roles]
+      security: [{ BearerAuth: [] }]
+      summary: Delete custom role
+      responses:
+        "200":
+          description: Deleted
+        "409":
+          description: Still assigned to users
+

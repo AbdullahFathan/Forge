@@ -45,6 +45,11 @@ type holidayRequest struct {
 	Name string `json:"name" validate:"required,min=1,max=128"`
 }
 
+type holidayPatchRequest struct {
+	Date *string `json:"date"`
+	Name *string `json:"name" validate:"omitempty,min=1,max=128"`
+}
+
 func (h *Handler) ListAllocations(w http.ResponseWriter, r *http.Request) {
 	actor, ok := authctx.User(r.Context())
 	if !ok {
@@ -302,6 +307,42 @@ func (h *Handler) CreateHoliday(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, http.StatusCreated, ToHolidayPublic(hday))
+}
+
+func (h *Handler) PatchHoliday(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r, "id")
+	if err != nil {
+		response.Error(w, err)
+		return
+	}
+	var req holidayPatchRequest
+	if err := response.Decode(r, &req); err != nil {
+		response.Error(w, err)
+		return
+	}
+	if err := validator.Struct(req); err != nil {
+		response.Error(w, err)
+		return
+	}
+	if req.Date == nil && req.Name == nil {
+		response.Error(w, apperr.ErrValidation.WithMessage("date or name is required"))
+		return
+	}
+	var date *time.Time
+	if req.Date != nil {
+		d, err := parseDate(*req.Date)
+		if err != nil {
+			response.Error(w, err)
+			return
+		}
+		date = &d
+	}
+	hday, err := h.svc.PatchHoliday(id, date, req.Name)
+	if err != nil {
+		response.Error(w, err)
+		return
+	}
+	response.JSON(w, http.StatusOK, ToHolidayPublic(hday))
 }
 
 func (h *Handler) DeleteHoliday(w http.ResponseWriter, r *http.Request) {

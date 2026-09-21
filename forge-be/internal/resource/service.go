@@ -28,7 +28,9 @@ type Store interface {
 	AllInRange(time.Time, time.Time) ([]Allocation, error)
 	ListHolidays() ([]Holiday, error)
 	CreateHoliday(*Holiday) error
+	GetHoliday(uuid.UUID) (*Holiday, error)
 	GetHolidayByDate(time.Time) (*Holiday, error)
+	SaveHoliday(*Holiday) error
 	DeleteHoliday(uuid.UUID) error
 	ListActiveUsers(*uuid.UUID, string) ([]user.User, error)
 	GetUser(uuid.UUID) (*user.User, error)
@@ -574,6 +576,36 @@ func (s *Service) CreateHoliday(date time.Time, name string) (*Holiday, error) {
 
 func (s *Service) DeleteHoliday(id uuid.UUID) error {
 	return s.repo.DeleteHoliday(id)
+}
+
+func (s *Service) PatchHoliday(id uuid.UUID, date *time.Time, name *string) (*Holiday, error) {
+	h, err := s.repo.GetHoliday(id)
+	if err != nil {
+		return nil, err
+	}
+	if date != nil {
+		next := DateUTC(*date)
+		existing, err := s.repo.GetHolidayByDate(next)
+		if err == nil && existing.ID != id {
+			return nil, apperr.ErrConflict.WithMessage("holiday already exists on this date")
+		} else if err != nil {
+			if ae, ok := apperr.As(err); !ok || ae.Code != apperr.ErrNotFound.Code {
+				return nil, err
+			}
+		}
+		h.Date = next
+	}
+	if name != nil {
+		n := strings.TrimSpace(*name)
+		if n == "" {
+			return nil, apperr.ErrValidation.WithMessage("name is required")
+		}
+		h.Name = n
+	}
+	if err := s.repo.SaveHoliday(h); err != nil {
+		return nil, err
+	}
+	return h, nil
 }
 
 func validateAlloc(pct float64, start, end time.Time, role string) error {

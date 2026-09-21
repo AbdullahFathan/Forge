@@ -30,4 +30,6 @@ func TestLoadOK(t *testing.T) {
 	cfg, err := Load()
 	require.NoError(t, err)
 	require.Equal(t, "8080", cfg.HTTPPort)
+	require.Equal(t, 25, cfg.DBMaxOpenConns)
+	require.Equal(t, "587", cfg.SMTPPort)
 }

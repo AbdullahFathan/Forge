@@ -10,7 +10,27 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 )
 
-func Connect(dsn string, local bool, log *zap.Logger) (*gorm.DB, error) {
+type Pool struct {
+	MaxOpen         int
+	MaxIdle         int
+	ConnMaxLifetime time.Duration
+}
+
+func (p Pool) applyDefaults() Pool {
+	if p.MaxOpen <= 0 {
+		p.MaxOpen = 25
+	}
+	if p.MaxIdle <= 0 {
+		p.MaxIdle = 5
+	}
+	if p.ConnMaxLifetime <= 0 {
+		p.ConnMaxLifetime = time.Hour
+	}
+	return p
+}
+
+func Connect(dsn string, local bool, log *zap.Logger, pool Pool) (*gorm.DB, error) {
+	pool = pool.applyDefaults()
 	level := gormlogger.Warn
 	if local {
 		level = gormlogger.Info
@@ -25,9 +45,9 @@ func Connect(dsn string, local bool, log *zap.Logger) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	sqlDB.SetMaxOpenConns(25)
-	sqlDB.SetMaxIdleConns(5)
-	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetMaxOpenConns(pool.MaxOpen)
+	sqlDB.SetMaxIdleConns(pool.MaxIdle)
+	sqlDB.SetConnMaxLifetime(pool.ConnMaxLifetime)
 	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("database ping: %w", err)
 	}

@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -40,8 +41,10 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 	roleRepo := rbac.NewRepository(db)
 	auditSvc := auditlog.NewService(db)
 	userSvc := user.NewService(userRepo, roleRepo, deptRepo, auditSvc)
-	notifySvc := notification.NewService(db, notification.NopSender{}, userSvc)
+	notifySvc := notification.NewService(db, mailSender(cfg, userRepo), userSvc)
 	deptSvc := department.NewService(deptRepo)
+	roleSvc := rbac.NewService(roleRepo)
+	roleH := rbac.NewHandler(roleSvc)
 	taskRepo := task.NewRepository(db)
 	projRepo := project.NewRepository(db)
 	projSvc := project.NewService(projRepo, userRepo, deptRepo, taskRepo, auditSvc)
@@ -83,6 +86,7 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		response.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	r.Get("/ready", Ready(db, rdb))
 	r.Handle("/swagger/openapi.yaml", SwaggerSpec())
 	r.Get("/swagger", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/swagger/index.html", http.StatusFound)
@@ -118,6 +122,16 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 			r.Get("/{id}", deptH.Get)
 			r.Patch("/{id}", deptH.Patch)
 			r.Delete("/{id}", deptH.Delete)
+		})
+
+		r.With(middleware.Require(perm.RoleManage)).Get("/permissions", roleH.ListPermissions)
+		r.Route("/roles", func(r chi.Router) {
+			r.Use(middleware.Require(perm.RoleManage))
+			r.Get("/", roleH.List)
+			r.Post("/", roleH.Create)
+			r.Get("/{id}", roleH.Get)
+			r.Patch("/{id}", roleH.Patch)
+			r.Delete("/{id}", roleH.Delete)
 		})
 
 		r.Route("/projects", func(r chi.Router) {
@@ -165,6 +179,7 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 				r.Use(middleware.Require(perm.DepartmentManage))
 				r.Get("/holidays", resH.ListHolidays)
 				r.Post("/holidays", resH.CreateHoliday)
+				r.Patch("/holidays/{id}", resH.PatchHoliday)
 				r.Delete("/holidays/{id}", resH.DeleteHoliday)
 			})
 		})
@@ -193,4 +208,18 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 	})
 
 	return &App{Handler: r, Scheduler: sched}
+}
+
+func mailSender(cfg *config.Config, users *user.Repository) notification.Sender {
+	if strings.TrimSpace(cfg.SMTPHost) == "" {
+		return notification.NopSender{}
+	}
+	return notification.NewSMTP(notification.SMTPConfig{
+		Host:     cfg.SMTPHost,
+		Port:     cfg.SMTPPort,
+		Username: cfg.SMTPUser,
+		Password: cfg.SMTPPassword,
+		From:     cfg.SMTPFrom,
+		StartTLS: cfg.SMTPStartTLS,
+	}, users)
 }

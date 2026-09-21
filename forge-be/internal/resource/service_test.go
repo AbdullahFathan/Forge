@@ -126,6 +126,19 @@ func (f *fakeStore) CreateHoliday(h *Holiday) error {
 	f.holidays[h.ID] = &cp
 	return nil
 }
+func (f *fakeStore) GetHoliday(id uuid.UUID) (*Holiday, error) {
+	h, ok := f.holidays[id]
+	if !ok {
+		return nil, apperr.ErrNotFound.WithMessage("holiday not found")
+	}
+	cp := *h
+	return &cp, nil
+}
+func (f *fakeStore) SaveHoliday(h *Holiday) error {
+	cp := *h
+	f.holidays[h.ID] = &cp
+	return nil
+}
 func (f *fakeStore) GetHolidayByDate(dt time.Time) (*Holiday, error) {
 	for _, h := range f.holidays {
 		if DateUTC(h.Date).Equal(DateUTC(dt)) {
@@ -296,6 +309,22 @@ func TestWorkloadSelfOnly(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, uid, wl.UserID)
 	require.Len(t, wl.WeekSeries, 4)
+}
+
+func TestPatchHolidayConflict(t *testing.T) {
+	store := newFakeStore()
+	svc := NewService(store, &fakeProjects{}, fakeTasks{}, nil, nil)
+	a, err := svc.CreateHoliday(d("2026-05-01"), "Labor")
+	require.NoError(t, err)
+	_, err = svc.CreateHoliday(d("2026-08-17"), "Independence")
+	require.NoError(t, err)
+	next := d("2026-08-17")
+	_, err = svc.PatchHoliday(a.ID, &next, nil)
+	require.Equal(t, apperr.ErrConflict.Code, mustCode(err))
+	name := "May Day"
+	h, err := svc.PatchHoliday(a.ID, nil, &name)
+	require.NoError(t, err)
+	require.Equal(t, "May Day", h.Name)
 }
 
 func mustCode(err error) string {
