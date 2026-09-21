@@ -13,29 +13,42 @@ import (
 	"workspace/config"
 	"workspace/internal/auditlog"
 	"workspace/internal/auth"
+	"workspace/internal/dashboard"
 	"workspace/internal/department"
+	"workspace/internal/jobs"
+	"workspace/internal/notification"
 	"workspace/internal/project"
 	"workspace/internal/rbac"
 	"workspace/internal/rbac/perm"
+	"workspace/internal/report"
 	"workspace/internal/resource"
 	"workspace/internal/task"
 	"workspace/internal/user"
 	"workspace/pkg/middleware"
 	"workspace/pkg/response"
+	"workspace/pkg/storage"
 )
 
-func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Client) http.Handler {
+type App struct {
+	Handler   http.Handler
+	Scheduler *jobs.Scheduler
+}
+
+func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Client, store storage.Client) *App {
 	userRepo := user.NewRepository(db)
 	deptRepo := department.NewRepository(db)
 	roleRepo := rbac.NewRepository(db)
-
-	userSvc := user.NewService(userRepo, roleRepo, deptRepo)
+	auditSvc := auditlog.NewService(db)
+	userSvc := user.NewService(userRepo, roleRepo, deptRepo, auditSvc)
+	notifySvc := notification.NewService(db, notification.NopSender{}, userSvc)
 	deptSvc := department.NewService(deptRepo)
 	taskRepo := task.NewRepository(db)
 	projRepo := project.NewRepository(db)
-	auditor := auditlog.Noop{}
-	projSvc := project.NewService(projRepo, userRepo, deptRepo, taskRepo, auditor)
-	taskSvc := task.NewService(taskRepo, projSvc, auditor)
+	projSvc := project.NewService(projRepo, userRepo, deptRepo, taskRepo, auditSvc)
+	projSvc.SetActivity(auditSvc)
+	projSvc.SetNotify(notifySvc)
+	taskSvc := task.NewService(taskRepo, projSvc, auditSvc)
+	taskSvc.SetNotify(notifySvc)
 	tokenStore := auth.NewRedisStore(rdb)
 	authSvc := auth.NewService(userRepo, tokenStore, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL)
 
@@ -45,8 +58,15 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 	projH := project.NewHandler(projSvc)
 	taskH := task.NewHandler(taskSvc)
 	resRepo := resource.NewRepository(db)
-	resSvc := resource.NewService(resRepo, projSvc, taskRepo, auditor, nil)
+	resSvc := resource.NewService(resRepo, projSvc, taskRepo, auditSvc, nil)
 	resH := resource.NewHandler(resSvc)
+	auditH := auditlog.NewHandler(auditSvc)
+	notifyH := notification.NewHandler(notifySvc)
+	reportSvc := report.New(projSvc, projRepo, taskRepo, resSvc, userRepo, store)
+	reportH := report.NewHandler(reportSvc)
+	dashSvc := dashboard.New(projSvc, projRepo, taskRepo, resSvc, auditSvc, notifySvc, nil)
+	dashH := dashboard.NewHandler(dashSvc)
+	sched := jobs.New(nil, rdb, notifySvc, taskRepo, projRepo, resSvc, roleRepo)
 
 	r := chi.NewRouter()
 	r.Use(chimw.Recoverer)
@@ -104,6 +124,7 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 			r.Get("/", projH.List)
 			r.With(middleware.Require(perm.ProjectCreate)).Post("/", projH.Create)
 			r.Get("/{id}", projH.Get)
+			r.Get("/{id}/activity", projH.Activity)
 			r.Patch("/{id}", projH.Patch)
 			r.With(middleware.Require(perm.ProjectDelete)).Delete("/{id}", projH.Delete)
 			r.Get("/{id}/members", projH.ListMembers)
@@ -147,7 +168,29 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 				r.Delete("/holidays/{id}", resH.DeleteHoliday)
 			})
 		})
+
+		r.With(middleware.Require(perm.AuditRead)).Get("/audit-logs", auditH.List)
+
+		r.Route("/notifications", func(r chi.Router) {
+			r.Get("/", notifyH.List)
+			r.Get("/unread-count", notifyH.UnreadCount)
+			r.Patch("/{id}/read", notifyH.MarkRead)
+			r.Post("/read-all", notifyH.MarkAllRead)
+		})
+
+		r.Route("/reports", func(r chi.Router) {
+			r.Use(middleware.Require(perm.ReportExport))
+			r.Get("/project-status", reportH.ProjectStatus)
+			r.Get("/resource-utilization", reportH.Utilization)
+			r.Get("/task-completion", reportH.TaskCompletion)
+		})
+
+		r.Route("/dashboards", func(r chi.Router) {
+			r.Get("/executive", dashH.Executive)
+			r.Get("/project-manager", dashH.ProjectManager)
+			r.Get("/member", dashH.Member)
+		})
 	})
 
-	return r
+	return &App{Handler: r, Scheduler: sched}
 }

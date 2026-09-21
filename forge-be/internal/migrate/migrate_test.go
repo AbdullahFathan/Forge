@@ -33,7 +33,7 @@ func TestUpAgainstComposePostgres(t *testing.T) {
 
 	var n int64
 	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM schema_migrations`).Scan(&n).Error)
-	require.GreaterOrEqual(t, n, int64(3))
+	require.GreaterOrEqual(t, n, int64(4))
 	require.NoError(t, db.Raw(`SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'resource_allocations'`).Scan(&n).Error)
 	require.Equal(t, int64(1), n)
 }

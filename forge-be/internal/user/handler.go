@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"strconv"
 
@@ -45,9 +46,10 @@ type patchRequest struct {
 }
 
 type mePatchRequest struct {
-	Name            *string `json:"name" validate:"omitempty,min=2,max=128"`
-	Password        *string `json:"password" validate:"omitempty,min=8"`
-	CurrentPassword *string `json:"currentPassword"`
+	Name                      *string `json:"name" validate:"omitempty,min=2,max=128"`
+	Password                  *string `json:"password" validate:"omitempty,min=8"`
+	CurrentPassword           *string `json:"currentPassword"`
+	EmailNotificationsEnabled *bool   `json:"emailNotificationsEnabled"`
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +86,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	actor, ok := authctx.User(r.Context())
+	if !ok {
+		response.Error(w, apperr.ErrUnauthorized)
+		return
+	}
 	var req createRequest
 	if err := response.Decode(r, &req); err != nil {
 		response.Error(w, err)
@@ -97,7 +104,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.IsActive != nil {
 		active = *req.IsActive
 	}
-	u, err := h.svc.Create(CreateInput{
+	u, err := h.svc.Create(r.Context(), actor, clientIP(r), CreateInput{
 		Name:                req.Name,
 		Email:               req.Email,
 		Password:            req.Password,
@@ -129,6 +136,11 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
+	actor, ok := authctx.User(r.Context())
+	if !ok {
+		response.Error(w, apperr.ErrUnauthorized)
+		return
+	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		response.Error(w, apperr.ErrValidation.WithMessage("invalid id"))
@@ -158,7 +170,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		idCopy := req.DepartmentID
 		in.DepartmentID = &idCopy
 	}
-	u, err := h.svc.Patch(id, in)
+	u, err := h.svc.Patch(r.Context(), actor, clientIP(r), id, in)
 	if err != nil {
 		response.Error(w, err)
 		return
@@ -167,12 +179,17 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
+	actor, ok := authctx.User(r.Context())
+	if !ok {
+		response.Error(w, apperr.ErrUnauthorized)
+		return
+	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		response.Error(w, apperr.ErrValidation.WithMessage("invalid id"))
 		return
 	}
-	if err := h.svc.Delete(id); err != nil {
+	if err := h.svc.Delete(r.Context(), actor, clientIP(r), id); err != nil {
 		response.Error(w, err)
 		return
 	}
@@ -208,10 +225,11 @@ func (h *Handler) PatchMe(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, err)
 		return
 	}
-	u, err := h.svc.PatchMe(p.UserID, MePatchInput{
-		Name:            req.Name,
-		Password:        req.Password,
-		CurrentPassword: req.CurrentPassword,
+	u, err := h.svc.PatchMe(r.Context(), p, clientIP(r), p.UserID, MePatchInput{
+		Name:                      req.Name,
+		Password:                  req.Password,
+		CurrentPassword:           req.CurrentPassword,
+		EmailNotificationsEnabled: req.EmailNotificationsEnabled,
 	})
 	if err != nil {
 		response.Error(w, err)
@@ -230,6 +248,14 @@ func queryInt(r *http.Request, key string, def int) int {
 		return def
 	}
 	return n
+}
+
+func clientIP(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 func decodeAllowUnknown(r *http.Request, dst any) error {

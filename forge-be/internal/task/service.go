@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"workspace/internal/auditlog"
+	"workspace/internal/notification"
 	"workspace/internal/project"
 	"workspace/pkg/apperr"
 	"workspace/pkg/authctx"
@@ -38,16 +39,29 @@ type Projects interface {
 }
 
 type Service struct {
-	repo  Store
-	proj  Projects
-	audit auditlog.Auditor
+	repo   Store
+	proj   Projects
+	audit  auditlog.Auditor
+	notify Notifier
+}
+
+type Notifier interface {
+	Emit(ctx context.Context, ev notification.Event) error
 }
 
 func NewService(repo Store, proj Projects, audit auditlog.Auditor) *Service {
 	if audit == nil {
 		audit = auditlog.Noop{}
 	}
-	return &Service{repo: repo, proj: proj, audit: audit}
+	return &Service{repo: repo, proj: proj, audit: audit, notify: notification.NopEmitter{}}
+}
+
+func (s *Service) SetNotify(n Notifier) {
+	if n == nil {
+		s.notify = notification.NopEmitter{}
+		return
+	}
+	s.notify = n
 }
 
 type CreateInput struct {
@@ -150,7 +164,15 @@ func (s *Service) Create(ctx context.Context, actor authctx.Principal, ip string
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Task", EntityID: got.ID, Action: "CREATED", After: got,
+		ProjectID: auditlog.Ptr(got.ProjectID),
 	})
+	for _, uid := range assigneeIDs(got) {
+		_ = s.notify.Emit(ctx, notification.Event{
+			UserID: uid, Type: notification.TypeTaskAssigned,
+			Title: "Task assigned", Body: got.Name,
+			EntityID: got.ID, Metadata: map[string]any{"taskId": got.ID.String(), "projectId": got.ProjectID.String()},
+		})
+	}
 	return got, nil
 }
 
@@ -183,6 +205,7 @@ func (s *Service) Patch(ctx context.Context, actor authctx.Principal, ip string,
 			return nil, apperr.ErrForbidden.WithMessage("assignees may only update status or position")
 		}
 	}
+	beforeIDs := assigneeIDSet(t)
 	before, _ := json.Marshal(t)
 	action := "UPDATED"
 	if in.Name != nil {
@@ -249,8 +272,42 @@ func (s *Service) Patch(ctx context.Context, actor authctx.Principal, ip string,
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Task", EntityID: got.ID,
-		Action: action, Before: json.RawMessage(before), After: got,
+		Action: action, Before: json.RawMessage(before), After: got, ProjectID: auditlog.Ptr(got.ProjectID),
 	})
+	if in.AssigneeIDs != nil {
+		for _, uid := range assigneeIDs(got) {
+			if _, ok := beforeIDs[uid]; ok {
+				continue
+			}
+			_ = s.notify.Emit(ctx, notification.Event{
+				UserID: uid, Type: notification.TypeTaskAssigned,
+				Title: "Task assigned", Body: got.Name,
+				EntityID: got.ID, Metadata: map[string]any{"taskId": got.ID.String(), "projectId": got.ProjectID.String()},
+			})
+		}
+	}
+	if action == "STATUS_CHANGED" {
+		p, _, _ := s.proj.MustSee(actor, got.ProjectID)
+		seen := map[uuid.UUID]struct{}{}
+		if p != nil {
+			_ = s.notify.Emit(ctx, notification.Event{
+				UserID: p.OwnerID, Type: notification.TypeTaskStatusChanged,
+				Title: "Task status updated", Body: got.Name + " is now " + got.Status,
+				EntityID: got.ID, Metadata: map[string]any{"taskId": got.ID.String(), "status": got.Status, "projectId": got.ProjectID.String()},
+			})
+			seen[p.OwnerID] = struct{}{}
+		}
+		for _, uid := range assigneeIDs(got) {
+			if _, ok := seen[uid]; ok {
+				continue
+			}
+			_ = s.notify.Emit(ctx, notification.Event{
+				UserID: uid, Type: notification.TypeTaskStatusChanged,
+				Title: "Task status updated", Body: got.Name + " is now " + got.Status,
+				EntityID: got.ID, Metadata: map[string]any{"taskId": got.ID.String(), "status": got.Status},
+			})
+		}
+	}
 	return got, nil
 }
 
@@ -267,6 +324,7 @@ func (s *Service) Delete(ctx context.Context, actor authctx.Principal, ip string
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Task", EntityID: id, Action: "DELETED", Before: t,
+		ProjectID: auditlog.Ptr(t.ProjectID),
 	})
 	return nil
 }
@@ -306,6 +364,7 @@ func (s *Service) AddDependency(ctx context.Context, actor authctx.Principal, ip
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Task", EntityID: taskID, Action: "UPDATED", After: got,
+		ProjectID: auditlog.Ptr(t.ProjectID),
 	})
 	return got, nil
 }
@@ -323,6 +382,7 @@ func (s *Service) RemoveDependency(ctx context.Context, actor authctx.Principal,
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Task", EntityID: taskID, Action: "UPDATED",
+		ProjectID: auditlog.Ptr(t.ProjectID),
 	})
 	return nil
 }
@@ -368,6 +428,7 @@ func (s *Service) AddComment(ctx context.Context, actor authctx.Principal, ip st
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Task", EntityID: taskID, Action: "UPDATED", After: created,
+		ProjectID: auditlog.Ptr(t.ProjectID),
 	})
 	return created, nil
 }
@@ -423,6 +484,22 @@ func (s *Service) ensureAssigneesAreMembers(projectID uuid.UUID, ids []uuid.UUID
 		}
 	}
 	return nil
+}
+
+func assigneeIDs(t *Task) []uuid.UUID {
+	out := make([]uuid.UUID, 0, len(t.Assignees))
+	for _, u := range t.Assignees {
+		out = append(out, u.ID)
+	}
+	return out
+}
+
+func assigneeIDSet(t *Task) map[uuid.UUID]struct{} {
+	out := map[uuid.UUID]struct{}{}
+	for _, u := range t.Assignees {
+		out[u.ID] = struct{}{}
+	}
+	return out
 }
 
 func validateTaskEnums(status, priority string) error {

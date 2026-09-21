@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"workspace/internal/auditlog"
 	"workspace/pkg/apperr"
 	"workspace/pkg/authctx"
 	"workspace/pkg/response"
@@ -139,6 +140,31 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.JSON(w, http.StatusOK, sum)
+}
+
+func (h *Handler) Activity(w http.ResponseWriter, r *http.Request) {
+	actor, ok := authctx.User(r.Context())
+	if !ok {
+		response.Error(w, apperr.ErrUnauthorized)
+		return
+	}
+	id, err := parseID(r, "id")
+	if err != nil {
+		response.Error(w, err)
+		return
+	}
+	page := queryInt(r, "page", 1)
+	pageSize := queryInt(r, "pageSize", 20)
+	rows, total, err := h.svc.Activity(actor, id, page, pageSize)
+	if err != nil {
+		response.Error(w, err)
+		return
+	}
+	items := make([]auditlog.Public, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, auditlog.ToPublic(row))
+	}
+	response.JSON(w, http.StatusOK, auditlog.Page{Items: items, Page: page, PageSize: pageSize, TotalItems: total})
 }
 
 func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {

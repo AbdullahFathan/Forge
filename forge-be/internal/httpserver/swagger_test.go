@@ -26,5 +26,8 @@ func TestSwaggerAndHealthHandlers(t *testing.T) {
 	require.Contains(t, rec.Body.String(), "/tasks/{id}")
 	require.Contains(t, rec.Body.String(), "/resources/allocations")
 	require.Contains(t, rec.Body.String(), "/resources/capacity")
-	require.Contains(t, rec.Body.String(), "/me/workload")
+	require.Contains(t, rec.Body.String(), "/audit-logs")
+	require.Contains(t, rec.Body.String(), "/notifications")
+	require.Contains(t, rec.Body.String(), "/reports/project-status")
+	require.Contains(t, rec.Body.String(), "/dashboards/executive")
 }

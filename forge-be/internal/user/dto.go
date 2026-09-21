@@ -14,9 +14,10 @@ type Public struct {
 	RoleCode            string     `json:"roleCode"`
 	DepartmentID        *uuid.UUID `json:"departmentId"`
 	DepartmentName      *string    `json:"departmentName,omitempty"`
-	CapacityHoursPerDay int        `json:"capacityHoursPerDay"`
-	IsActive            bool       `json:"isActive"`
-	Skills              []string   `json:"skills"`
+	CapacityHoursPerDay         int      `json:"capacityHoursPerDay"`
+	IsActive                    bool     `json:"isActive"`
+	EmailNotificationsEnabled   bool     `json:"emailNotificationsEnabled"`
+	Skills                      []string `json:"skills"`
 	CreatedAt           time.Time  `json:"createdAt"`
 	UpdatedAt           time.Time  `json:"updatedAt"`
 }
@@ -29,9 +30,10 @@ func ToPublic(u *User) Public {
 		RoleID:              u.RoleID,
 		RoleCode:            u.Role.Code,
 		DepartmentID:        u.DepartmentID,
-		CapacityHoursPerDay: u.CapacityHoursPerDay,
-		IsActive:            u.IsActive,
-		Skills:              SkillNames(u),
+		CapacityHoursPerDay:       u.CapacityHoursPerDay,
+		IsActive:                  u.IsActive,
+		EmailNotificationsEnabled: u.EmailNotificationsEnabled,
+		Skills:                    SkillNames(u),
 		CreatedAt:           u.CreatedAt,
 		UpdatedAt:           u.UpdatedAt,
 	}

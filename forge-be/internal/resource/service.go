@@ -158,7 +158,7 @@ func (s *Service) Create(ctx context.Context, actor authctx.Principal, ip string
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "ResourceAllocation", EntityID: got.ID,
-		Action: "CREATED", After: got,
+		Action: "CREATED", After: got, ProjectID: auditlog.Ptr(got.ProjectID),
 	})
 	warn, over, err := s.userOverFlags(got.UserID, got.StartDate, got.EndDate)
 	return got, warn, over, err
@@ -207,7 +207,7 @@ func (s *Service) Patch(ctx context.Context, actor authctx.Principal, ip string,
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "ResourceAllocation", EntityID: got.ID,
-		Action: "UPDATED", Before: before, After: got,
+		Action: "UPDATED", Before: before, After: got, ProjectID: auditlog.Ptr(got.ProjectID),
 	})
 	warn, over, err := s.userOverFlags(got.UserID, got.StartDate, got.EndDate)
 	return got, warn, over, err
@@ -226,7 +226,7 @@ func (s *Service) Delete(ctx context.Context, actor authctx.Principal, ip string
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "ResourceAllocation", EntityID: a.ID,
-		Action: "DELETED", Before: a,
+		Action: "DELETED", Before: a, ProjectID: auditlog.Ptr(a.ProjectID),
 	})
 	return nil
 }
@@ -263,20 +263,21 @@ func holidayMap(rows []Holiday) map[time.Time]struct{} {
 }
 
 type RangeQuery struct {
-	From         time.Time
-	To           time.Time
-	Granularity  string
-	DepartmentID *uuid.UUID
-	Skill        string
+	From          time.Time
+	To            time.Time
+	Granularity   string
+	DepartmentID  *uuid.UUID
+	Skill         string
+	AllowAnyRange bool
 }
 
-func (s *Service) parseRange(from, to time.Time, granularity string) (time.Time, time.Time, string, error) {
+func (s *Service) parseRange(from, to time.Time, granularity string, allowAny bool) (time.Time, time.Time, string, error) {
 	from, to = DateUTC(from), DateUTC(to)
 	if to.Before(from) {
 		return time.Time{}, time.Time{}, "", apperr.ErrValidation.WithMessage("to must be on or after from")
 	}
 	days := InclusiveDays(from, to)
-	if days < 28 || days > 84 {
+	if !allowAny && (days < 28 || days > 84) {
 		return time.Time{}, time.Time{}, "", apperr.ErrValidation.WithMessage("range must be between 4 and 12 weeks inclusive")
 	}
 	if granularity == "" {
@@ -289,7 +290,7 @@ func (s *Service) parseRange(from, to time.Time, granularity string) (time.Time,
 }
 
 func (s *Service) Forecast(q RangeQuery) (Forecast, error) {
-	from, to, gran, err := s.parseRange(q.From, q.To, q.Granularity)
+	from, to, gran, err := s.parseRange(q.From, q.To, q.Granularity, q.AllowAnyRange)
 	if err != nil {
 		return Forecast{}, err
 	}
@@ -385,7 +386,7 @@ func (s *Service) Matrix(q RangeQuery) (Matrix, error) {
 			m.Periods = append(m.Periods, MatrixPeriod{Key: b.PeriodKey, Start: b.PeriodStart, End: b.PeriodEnd})
 		}
 	} else {
-		from, to, gran, _ := s.parseRange(q.From, q.To, q.Granularity)
+		from, to, gran, _ := s.parseRange(q.From, q.To, q.Granularity, q.AllowAnyRange)
 		for _, p := range Periods(from, to, gran) {
 			m.Periods = append(m.Periods, MatrixPeriod{Key: p.Key, Start: dateStr(p.Start), End: dateStr(p.End)})
 		}
@@ -521,6 +522,32 @@ func (s *Service) Workload(actor authctx.Principal, userID *uuid.UUID) (Workload
 		}
 	}
 	return wl, nil
+}
+
+func (s *Service) PeriodUtilization(from, to time.Time, departmentID *uuid.UUID) ([]AvailabilityItem, error) {
+	fc, err := s.Forecast(RangeQuery{From: from, To: to, Granularity: "week", DepartmentID: departmentID, AllowAnyRange: true})
+	if err != nil {
+		return nil, err
+	}
+	var out []AvailabilityItem
+	for _, u := range fc.Users {
+		var alloc, eff float64
+		for _, b := range u.Buckets {
+			alloc += b.AllocatedHours
+			eff += b.EffectiveHours
+		}
+		util := UtilizationPercent(alloc, eff)
+		out = append(out, AvailabilityItem{
+			UserID: u.UserID, Name: u.Name, DepartmentID: u.DepartmentID,
+			UtilizationPercent: util, RemainingPercent: 100 - util, Band: Band(util),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].UtilizationPercent > out[j].UtilizationPercent })
+	return out, nil
+}
+
+func (s *Service) AllocationsForUser(userID uuid.UUID, from, to time.Time) ([]Allocation, error) {
+	return s.repo.ForUsersInRange([]uuid.UUID{userID}, from, to)
 }
 
 func (s *Service) ListHolidays() ([]Holiday, error) {

@@ -11,6 +11,7 @@ import (
 
 	"workspace/internal/auditlog"
 	"workspace/internal/department"
+	"workspace/internal/notification"
 	"workspace/internal/rbac/perm"
 	"workspace/internal/user"
 	"workspace/pkg/apperr"
@@ -45,19 +46,39 @@ type TaskStats interface {
 	Completion(projectID uuid.UUID) (percent float64, counts TaskCounts, err error)
 }
 
+type ActivityLister interface {
+	RecentForProject(projectID uuid.UUID, limit int) ([]auditlog.Log, error)
+	List(auditlog.ListFilter) ([]auditlog.Log, int64, error)
+}
+
+type Notifier interface {
+	Emit(ctx context.Context, ev notification.Event) error
+}
+
 type Service struct {
-	repo  Store
-	users UserFinder
-	depts DeptFinder
-	stats TaskStats
-	audit auditlog.Auditor
+	repo     Store
+	users    UserFinder
+	depts    DeptFinder
+	stats    TaskStats
+	audit    auditlog.Auditor
+	activity ActivityLister
+	notify   Notifier
 }
 
 func NewService(repo Store, users UserFinder, depts DeptFinder, stats TaskStats, audit auditlog.Auditor) *Service {
 	if audit == nil {
 		audit = auditlog.Noop{}
 	}
-	return &Service{repo: repo, users: users, depts: depts, stats: stats, audit: audit}
+	return &Service{repo: repo, users: users, depts: depts, stats: stats, audit: audit, notify: notification.NopEmitter{}}
+}
+
+func (s *Service) SetActivity(a ActivityLister) { s.activity = a }
+func (s *Service) SetNotify(n Notifier) {
+	if n == nil {
+		s.notify = notification.NopEmitter{}
+		return
+	}
+	s.notify = n
 }
 
 type CreateInput struct {
@@ -149,7 +170,7 @@ func (s *Service) Create(ctx context.Context, actor authctx.Principal, ip string
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Project", EntityID: created.ID,
-		Action: "CREATED", After: created,
+		Action: "CREATED", After: created, ProjectID: auditlog.Ptr(created.ID),
 	})
 	return created, nil
 }
@@ -225,7 +246,7 @@ func (s *Service) Patch(ctx context.Context, actor authctx.Principal, ip string,
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Project", EntityID: updated.ID,
-		Action: "UPDATED", Before: before, After: updated,
+		Action: "UPDATED", Before: before, After: updated, ProjectID: auditlog.Ptr(updated.ID),
 	})
 	return updated, nil
 }
@@ -246,7 +267,7 @@ func (s *Service) Delete(ctx context.Context, actor authctx.Principal, ip string
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "Project", EntityID: id,
-		Action: "DELETED", Before: p,
+		Action: "DELETED", Before: p, ProjectID: auditlog.Ptr(id),
 	})
 	return nil
 }
@@ -285,7 +306,7 @@ func (s *Service) AddMember(ctx context.Context, actor authctx.Principal, ip str
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "ProjectMember", EntityID: got.ID,
-		Action: "CREATED", After: got,
+		Action: "CREATED", After: got, ProjectID: auditlog.Ptr(projectID),
 	})
 	return got, nil
 }
@@ -310,7 +331,12 @@ func (s *Service) RemoveMember(ctx context.Context, actor authctx.Principal, ip 
 	}
 	_ = s.audit.Record(ctx, auditlog.Record{
 		ActorID: actor.UserID, IP: ip, EntityType: "ProjectMember", EntityID: m.ID,
-		Action: "DELETED", Before: m,
+		Action: "DELETED", Before: m, ProjectID: auditlog.Ptr(projectID),
+	})
+	_ = s.notify.Emit(ctx, notification.Event{
+		UserID: userID, Type: notification.TypeMemberRemoved,
+		Title: "Removed from project", Body: "You were removed from " + p.Name,
+		EntityID: projectID, Metadata: map[string]any{"projectId": projectID.String(), "projectName": p.Name},
 	})
 	return nil
 }
@@ -377,12 +403,33 @@ func (s *Service) summary(p *Project) (Summary, error) {
 	if err != nil {
 		return Summary{}, err
 	}
+	act := []auditlog.Public{}
+	if s.activity != nil {
+		rows, err := s.activity.RecentForProject(p.ID, 20)
+		if err != nil {
+			return Summary{}, err
+		}
+		act = make([]auditlog.Public, 0, len(rows))
+		for _, row := range rows {
+			act = append(act, auditlog.ToPublic(row))
+		}
+	}
 	return Summary{
 		Public:      ToPublic(p, pct),
 		TaskCounts:  counts,
 		MemberCount: n,
-		Activity:    []any{},
+		Activity:    act,
 	}, nil
+}
+
+func (s *Service) Activity(actor authctx.Principal, projectID uuid.UUID, page, pageSize int) ([]auditlog.Log, int64, error) {
+	if _, _, err := s.loadVisible(actor, projectID); err != nil {
+		return nil, 0, err
+	}
+	if s.activity == nil {
+		return []auditlog.Log{}, 0, nil
+	}
+	return s.activity.List(auditlog.ListFilter{ProjectID: auditlog.Ptr(projectID), Page: page, PageSize: pageSize})
 }
 
 func (s *Service) completion(projectID uuid.UUID) (float64, TaskCounts, error) {

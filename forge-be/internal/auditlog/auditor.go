@@ -14,6 +14,7 @@ type Record struct {
 	Action     string
 	Before     any
 	After      any
+	ProjectID  *uuid.UUID
 }
 
 type Auditor interface {
@@ -24,4 +25,12 @@ type Noop struct{}
 
 func (Noop) Record(context.Context, Record) error {
 	return nil
+}
+
+func Ptr(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+	p := id
+	return &p
 }

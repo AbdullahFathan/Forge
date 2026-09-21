@@ -1,6 +1,8 @@
 package project
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
@@ -186,4 +188,82 @@ func (r *Repository) IsMember(projectID, userID uuid.UUID) (bool, string, error)
 		return false, "", err
 	}
 	return true, m.Role, nil
+}
+
+type StatusCounts struct {
+	Active    int64
+	Done      int64
+	Late      int64
+}
+
+func (r *Repository) StatusCounts(today time.Time) (StatusCounts, error) {
+	today = today.UTC().Truncate(24 * time.Hour)
+	var out StatusCounts
+	err := r.db.Model(&Project{}).Where("status = ? AND deleted_at IS NULL", StatusActive).Count(&out.Active).Error
+	if err != nil {
+		return out, err
+	}
+	err = r.db.Model(&Project{}).Where("status = ?", StatusCompleted).Count(&out.Done).Error
+	if err != nil {
+		return out, err
+	}
+	err = r.db.Model(&Project{}).
+		Where("target_end_date < ? AND status NOT IN ? AND deleted_at IS NULL", today, []string{StatusCompleted, StatusArchived}).
+		Count(&out.Late).Error
+	return out, err
+}
+
+func (r *Repository) DueBetween(from, to time.Time) ([]Project, error) {
+	var rows []Project
+	err := r.preload().
+		Where("target_end_date >= ? AND target_end_date <= ? AND status NOT IN ? AND deleted_at IS NULL",
+			from, to, []string{StatusCompleted, StatusArchived}).
+		Order("target_end_date ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+type MonthCount struct {
+	Month string
+	Count int64
+}
+
+func (r *Repository) CompletedByMonth(from time.Time) ([]MonthCount, error) {
+	type row struct {
+		Month string
+		N     int64
+	}
+	var rows []row
+	err := r.db.Model(&Project{}).
+		Select("to_char(date_trunc('month', updated_at), 'YYYY-MM') as month, count(*) as n").
+		Where("status = ? AND updated_at >= ?", StatusCompleted, from).
+		Group("date_trunc('month', updated_at)").
+		Order("month").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	out := make([]MonthCount, 0, len(rows))
+	for _, x := range rows {
+		out = append(out, MonthCount{Month: x.Month, Count: x.N})
+	}
+	return out, nil
+}
+
+func (r *Repository) ListOwned(ownerID uuid.UUID) ([]Project, error) {
+	var rows []Project
+	err := r.preload().Where("owner_id = ? AND deleted_at IS NULL", ownerID).Order("created_at DESC").Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) ListAllActive() ([]Project, error) {
+	var rows []Project
+	err := r.preload().Where("deleted_at IS NULL").Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) MemberUserIDs(projectID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.db.Model(&Member{}).Where("project_id = ?", projectID).Pluck("user_id", &ids).Error
+	return ids, err
 }

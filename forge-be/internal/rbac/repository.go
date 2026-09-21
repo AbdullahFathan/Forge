@@ -42,3 +42,15 @@ func (r *Repository) CountActiveSuperAdmins() (int64, error) {
 		Count(&n).Error
 	return n, err
 }
+
+func (r *Repository) ListUserIDsWithPermission(code string) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	err := r.db.Table("users").
+		Select("users.id").
+		Joins("JOIN roles ON roles.id = users.role_id").
+		Joins("JOIN role_permissions ON role_permissions.role_id = roles.id").
+		Joins("JOIN permissions ON permissions.id = role_permissions.permission_id").
+		Where("permissions.code = ? AND users.is_active = ? AND users.deleted_at IS NULL", code, true).
+		Find(&ids).Error
+	return ids, err
+}

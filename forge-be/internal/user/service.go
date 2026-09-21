@@ -1,15 +1,18 @@
 package user
 
 import (
+	"context"
 	"errors"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"workspace/internal/auditlog"
 	"workspace/internal/department"
 	"workspace/internal/rbac"
 	"workspace/internal/rbac/perm"
 	"workspace/pkg/apperr"
+	"workspace/pkg/authctx"
 )
 
 type RoleFinder interface {
@@ -25,10 +28,25 @@ type Service struct {
 	users *Repository
 	roles RoleFinder
 	depts DeptFinder
+	audit auditlog.Auditor
 }
 
-func NewService(users *Repository, roles RoleFinder, depts DeptFinder) *Service {
-	return &Service{users: users, roles: roles, depts: depts}
+func NewService(users *Repository, roles RoleFinder, depts DeptFinder, audit auditlog.Auditor) *Service {
+	if audit == nil {
+		audit = auditlog.Noop{}
+	}
+	return &Service{users: users, roles: roles, depts: depts, audit: audit}
+}
+
+func auditSafe(u *User) map[string]any {
+	if u == nil {
+		return nil
+	}
+	return map[string]any{
+		"id": u.ID, "name": u.Name, "email": u.Email, "roleId": u.RoleID,
+		"departmentId": u.DepartmentID, "capacityHoursPerDay": u.CapacityHoursPerDay,
+		"isActive": u.IsActive, "emailNotificationsEnabled": u.EmailNotificationsEnabled,
+	}
 }
 
 type CreateInput struct {
@@ -53,9 +71,10 @@ type PatchInput struct {
 }
 
 type MePatchInput struct {
-	Name            *string
-	Password        *string
-	CurrentPassword *string
+	Name                      *string
+	Password                  *string
+	CurrentPassword           *string
+	EmailNotificationsEnabled *bool
 }
 
 func (s *Service) Get(id uuid.UUID) (*User, error) {
@@ -66,7 +85,7 @@ func (s *Service) List(f ListFilter) ([]User, int64, error) {
 	return s.users.List(f)
 }
 
-func (s *Service) Create(in CreateInput) (*User, error) {
+func (s *Service) Create(ctx context.Context, actor authctx.Principal, ip string, in CreateInput) (*User, error) {
 	taken, err := s.users.EmailTaken(in.Email, nil)
 	if err != nil {
 		return nil, err
@@ -91,13 +110,14 @@ func (s *Service) Create(in CreateInput) (*User, error) {
 		cap = 8
 	}
 	u := &User{
-		Name:                in.Name,
-		Email:               in.Email,
-		PasswordHash:        string(hash),
-		RoleID:              in.RoleID,
-		DepartmentID:        in.DepartmentID,
-		CapacityHoursPerDay: cap,
-		IsActive:            in.IsActive,
+		Name:                      in.Name,
+		Email:                     in.Email,
+		PasswordHash:              string(hash),
+		RoleID:                    in.RoleID,
+		DepartmentID:              in.DepartmentID,
+		CapacityHoursPerDay:       cap,
+		IsActive:                  in.IsActive,
+		EmailNotificationsEnabled: true,
 	}
 	if err := s.users.Create(u); err != nil {
 		return nil, err
@@ -107,14 +127,23 @@ func (s *Service) Create(in CreateInput) (*User, error) {
 			return nil, err
 		}
 	}
-	return s.users.GetByID(u.ID)
+	got, err := s.users.GetByID(u.ID)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.audit.Record(ctx, auditlog.Record{
+		ActorID: actor.UserID, IP: ip, EntityType: "User", EntityID: got.ID,
+		Action: "CREATED", After: auditSafe(got),
+	})
+	return got, nil
 }
 
-func (s *Service) Patch(id uuid.UUID, in PatchInput) (*User, error) {
+func (s *Service) Patch(ctx context.Context, actor authctx.Principal, ip string, id uuid.UUID, in PatchInput) (*User, error) {
 	u, err := s.users.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
+	before := auditSafe(u)
 	if err := s.guardLastSuperAdmin(u, in); err != nil {
 		return nil, err
 	}
@@ -156,14 +185,23 @@ func (s *Service) Patch(id uuid.UUID, in PatchInput) (*User, error) {
 			return nil, err
 		}
 	}
-	return s.users.GetByID(u.ID)
+	got, err := s.users.GetByID(u.ID)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.audit.Record(ctx, auditlog.Record{
+		ActorID: actor.UserID, IP: ip, EntityType: "User", EntityID: got.ID,
+		Action: "UPDATED", Before: before, After: auditSafe(got),
+	})
+	return got, nil
 }
 
-func (s *Service) PatchMe(id uuid.UUID, in MePatchInput) (*User, error) {
+func (s *Service) PatchMe(ctx context.Context, actor authctx.Principal, ip string, id uuid.UUID, in MePatchInput) (*User, error) {
 	u, err := s.users.GetByID(id)
 	if err != nil {
 		return nil, err
 	}
+	before := auditSafe(u)
 	if in.Name != nil {
 		u.Name = *in.Name
 	}
@@ -180,13 +218,24 @@ func (s *Service) PatchMe(id uuid.UUID, in MePatchInput) (*User, error) {
 		}
 		u.PasswordHash = string(hash)
 	}
+	if in.EmailNotificationsEnabled != nil {
+		u.EmailNotificationsEnabled = *in.EmailNotificationsEnabled
+	}
 	if err := s.users.Save(u); err != nil {
 		return nil, err
 	}
-	return s.users.GetByID(u.ID)
+	got, err := s.users.GetByID(u.ID)
+	if err != nil {
+		return nil, err
+	}
+	_ = s.audit.Record(ctx, auditlog.Record{
+		ActorID: actor.UserID, IP: ip, EntityType: "User", EntityID: got.ID,
+		Action: "UPDATED", Before: before, After: auditSafe(got),
+	})
+	return got, nil
 }
 
-func (s *Service) Delete(id uuid.UUID) error {
+func (s *Service) Delete(ctx context.Context, actor authctx.Principal, ip string, id uuid.UUID) error {
 	u, err := s.users.GetByID(id)
 	if err != nil {
 		return err
@@ -198,7 +247,14 @@ func (s *Service) Delete(id uuid.UUID) error {
 	if err := GuardLastSuperAdmin(u.Role.Code, true, n); err != nil {
 		return err
 	}
-	return s.users.SoftDelete(id)
+	if err := s.users.SoftDelete(id); err != nil {
+		return err
+	}
+	_ = s.audit.Record(ctx, auditlog.Record{
+		ActorID: actor.UserID, IP: ip, EntityType: "User", EntityID: id,
+		Action: "DELETED", Before: auditSafe(u),
+	})
+	return nil
 }
 
 func GuardLastSuperAdmin(roleCode string, removing bool, activeCount int64) error {
@@ -224,6 +280,14 @@ func (s *Service) guardLastSuperAdmin(u *User, in PatchInput) error {
 		return err
 	}
 	return GuardLastSuperAdmin(u.Role.Code, demote, n)
+}
+
+func (s *Service) EmailNotificationsEnabled(id uuid.UUID) (bool, error) {
+	u, err := s.users.GetByID(id)
+	if err != nil {
+		return false, err
+	}
+	return u.EmailNotificationsEnabled, nil
 }
 
 func IsNotFound(err error) bool {

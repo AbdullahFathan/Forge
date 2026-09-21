@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: WorkSpace API
   version: "1.1.0"
-  description: Phase 3 Resource and Capacity
+  description: Phase 4 Audit, Notifications, Reports, Dashboards
 servers:
   - url: /
 tags:
@@ -13,6 +13,10 @@ tags:
   - name: projects
   - name: tasks
   - name: resources
+  - name: audit
+  - name: notifications
+  - name: reports
+  - name: dashboards
 components:
   securitySchemes:
     BearerAuth:
@@ -325,7 +329,7 @@ paths:
     get:
       tags: [projects]
       security: [{ BearerAuth: [] }]
-      summary: Project summary (progress, task counts, members, empty activity)
+      summary: Project summary (progress, task counts, members, recent activity)
       responses:
         "200":
           description: Summary
@@ -740,3 +744,201 @@ paths:
       responses:
         "200":
           description: Deleted
+  /projects/{id}/activity:
+    get:
+      tags: [projects]
+      security: [{ BearerAuth: [] }]
+      summary: Project-scoped audit activity
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Paged audit rows
+  /audit-logs:
+    get:
+      tags: [audit]
+      security: [{ BearerAuth: [] }]
+      summary: List immutable audit logs (audit.read); format=csv streams CSV
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+        - in: query
+          name: userId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: entityType
+          schema: { type: string }
+        - in: query
+          name: action
+          schema: { type: string }
+        - in: query
+          name: from
+          schema: { type: string }
+        - in: query
+          name: to
+          schema: { type: string }
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, csv] }
+      responses:
+        "200":
+          description: Page or CSV
+        "403":
+          description: Forbidden
+  /notifications:
+    get:
+      tags: [notifications]
+      security: [{ BearerAuth: [] }]
+      summary: List own notifications
+      parameters:
+        - in: query
+          name: unread
+          schema: { type: boolean }
+        - in: query
+          name: type
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Page
+  /notifications/unread-count:
+    get:
+      tags: [notifications]
+      security: [{ BearerAuth: [] }]
+      summary: Unread count
+      responses:
+        "200":
+          description: unreadCount
+  /notifications/{id}/read:
+    patch:
+      tags: [notifications]
+      security: [{ BearerAuth: [] }]
+      summary: Mark one read
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: OK
+  /notifications/read-all:
+    post:
+      tags: [notifications]
+      security: [{ BearerAuth: [] }]
+      summary: Mark all read
+      responses:
+        "200":
+          description: OK
+  /reports/project-status:
+    get:
+      tags: [reports]
+      security: [{ BearerAuth: [] }]
+      summary: Project status report (report.export)
+      parameters:
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, csv, pdf] }
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: projectId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: JSON, CSV, or PDF
+        "403":
+          description: Forbidden
+  /reports/resource-utilization:
+    get:
+      tags: [reports]
+      security: [{ BearerAuth: [] }]
+      summary: Resource utilization report
+      parameters:
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, csv, pdf] }
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Rows matching capacity engine
+  /reports/task-completion:
+    get:
+      tags: [reports]
+      security: [{ BearerAuth: [] }]
+      summary: Task completion report
+      parameters:
+        - in: query
+          name: format
+          schema: { type: string, enum: [json, csv, pdf] }
+        - in: query
+          name: groupBy
+          schema: { type: string, enum: [project, user] }
+        - in: query
+          name: projectId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Done vs total
+  /dashboards/executive:
+    get:
+      tags: [dashboards]
+      security: [{ BearerAuth: [] }]
+      summary: Executive dashboard (Admin, Super Admin)
+      responses:
+        "200":
+          description: Portfolio aggregates
+        "403":
+          description: Forbidden
+  /dashboards/project-manager:
+    get:
+      tags: [dashboards]
+      security: [{ BearerAuth: [] }]
+      summary: Project manager dashboard
+      responses:
+        "200":
+          description: Owned projects, attention tasks, team capacity
+  /dashboards/member:
+    get:
+      tags: [dashboards]
+      security: [{ BearerAuth: [] }]
+      summary: Member dashboard
+      responses:
+        "200":
+          description: Assigned tasks, weekly load, latest notifications

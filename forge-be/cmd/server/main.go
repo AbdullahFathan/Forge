@@ -53,20 +53,32 @@ func main() {
 		log.Fatal("seed", zap.Error(err))
 	}
 
-	_ = storage.New(storage.Config{
+	store, err := storage.New(storage.Config{
 		Endpoint:  cfg.RustFSEndpoint,
 		AccessKey: cfg.RustFSAccessKey,
 		SecretKey: cfg.RustFSSecretKey,
 		Bucket:    cfg.RustFSBucket,
 		UseSSL:    cfg.RustFSUseSSL,
 	})
+	if err != nil {
+		log.Warn("storage client", zap.Error(err))
+		store = storage.Nop{}
+	}
+	ctxBucket, cancelBucket := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := store.EnsureBucket(ctxBucket); err != nil {
+		log.Warn("rustfs bucket", zap.Error(err))
+	}
+	cancelBucket()
 
-	handler := server.NewRouter(cfg, log, db, rdb)
+	app := server.NewRouter(cfg, log, db, rdb, store)
 	httpServer := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           handler,
+		Handler:           app.Handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	jobCtx, jobCancel := context.WithCancel(context.Background())
+	go app.Scheduler.Run(jobCtx, 15*time.Minute)
 
 	go func() {
 		log.Info("http listening", zap.String("addr", httpServer.Addr))
@@ -78,6 +90,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	jobCancel()
 	shCtx, shCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shCancel()
 	_ = httpServer.Shutdown(shCtx)

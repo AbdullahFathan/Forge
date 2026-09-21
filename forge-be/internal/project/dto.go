@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"workspace/internal/auditlog"
 )
 
 type Public struct {
@@ -37,8 +39,8 @@ type TaskCounts struct {
 type Summary struct {
 	Public
 	TaskCounts  TaskCounts `json:"taskCounts"`
-	MemberCount int64      `json:"memberCount"`
-	Activity    []any      `json:"activity"` // TODO Phase 4: project audit activity
+	MemberCount int64            `json:"memberCount"`
+	Activity    []auditlog.Public `json:"activity"`
 }
 
 type MemberPublic struct {

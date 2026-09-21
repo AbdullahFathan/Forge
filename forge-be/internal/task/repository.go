@@ -255,6 +255,105 @@ func (r *Repository) ListByAssignee(userID uuid.UUID) ([]Task, error) {
 	return rows, err
 }
 
+func (r *Repository) ListOpenDueBetween(from, to time.Time) ([]Task, error) {
+	var rows []Task
+	err := r.preload(false).
+		Where("due_date > ? AND due_date <= ? AND status <> ?", from, to, StatusDone).
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) ListOpenOverdue(before time.Time) ([]Task, error) {
+	var rows []Task
+	err := r.preload(false).
+		Where("due_date < ? AND status <> ?", before, StatusDone).
+		Find(&rows).Error
+	return rows, err
+}
+
+type Attention struct {
+	Blocked    []Task
+	Overdue    []Task
+	Unassigned []Task
+}
+
+func (r *Repository) Attention(projectIDs []uuid.UUID, today time.Time) (Attention, error) {
+	var out Attention
+	if len(projectIDs) == 0 {
+		return out, nil
+	}
+	q := r.preload(false).Where("project_id IN ?", projectIDs)
+	if err := q.Where("status = ?", StatusBlocked).Find(&out.Blocked).Error; err != nil {
+		return out, err
+	}
+	if err := r.preload(false).Where("project_id IN ? AND due_date < ? AND status <> ?", projectIDs, today, StatusDone).Find(&out.Overdue).Error; err != nil {
+		return out, err
+	}
+	if err := r.db.Where("project_id IN ? AND id NOT IN (SELECT task_id FROM task_assignees)", projectIDs).Find(&out.Unassigned).Error; err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func (r *Repository) CompletionByProject(projectIDs []uuid.UUID) (map[uuid.UUID]struct {
+	Done  int64
+	Total int64
+}, error) {
+	type row struct {
+		ProjectID uuid.UUID
+		Done      int64
+		Total     int64
+	}
+	q := r.db.Model(&Task{}).Select("project_id, COUNT(*) FILTER (WHERE status = ?) as done, COUNT(*) as total", StatusDone)
+	if len(projectIDs) > 0 {
+		q = q.Where("project_id IN ?", projectIDs)
+	}
+	var rows []row
+	err := q.Group("project_id").Scan(&rows).Error
+	out := map[uuid.UUID]struct {
+		Done  int64
+		Total int64
+	}{}
+	for _, x := range rows {
+		out[x.ProjectID] = struct {
+			Done  int64
+			Total int64
+		}{Done: x.Done, Total: x.Total}
+	}
+	return out, err
+}
+
+func (r *Repository) CompletionByUser(projectIDs []uuid.UUID) (map[uuid.UUID]struct {
+	Done  int64
+	Total int64
+}, error) {
+	type row struct {
+		UserID uuid.UUID
+		Done   int64
+		Total  int64
+	}
+	q := r.db.Table("tasks").
+		Select("task_assignees.user_id as user_id, COUNT(*) FILTER (WHERE tasks.status = ?) as done, COUNT(*) as total", StatusDone).
+		Joins("JOIN task_assignees ON task_assignees.task_id = tasks.id").
+		Where("tasks.deleted_at IS NULL")
+	if len(projectIDs) > 0 {
+		q = q.Where("tasks.project_id IN ?", projectIDs)
+	}
+	var rows []row
+	err := q.Group("task_assignees.user_id").Scan(&rows).Error
+	out := map[uuid.UUID]struct {
+		Done  int64
+		Total int64
+	}{}
+	for _, x := range rows {
+		out[x.UserID] = struct {
+			Done  int64
+			Total int64
+		}{Done: x.Done, Total: x.Total}
+	}
+	return out, err
+}
+
 func (r *Repository) IsAssignee(taskID, userID uuid.UUID) (bool, error) {
 	var n int64
 	err := r.db.Table("task_assignees").Where("task_id = ? AND user_id = ?", taskID, userID).Count(&n).Error

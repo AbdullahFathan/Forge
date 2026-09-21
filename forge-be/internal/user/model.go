@@ -19,9 +19,10 @@ type User struct {
 	Role                rbac.Role  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 	DepartmentID        *uuid.UUID `gorm:"type:uuid;index"`
 	Department          *department.Department
-	CapacityHoursPerDay int     `gorm:"not null;default:8"`
-	IsActive            bool    `gorm:"not null;default:true"`
-	Skills              []Skill `gorm:"foreignKey:UserID"`
+	CapacityHoursPerDay         int     `gorm:"not null;default:8"`
+	IsActive                    bool    `gorm:"not null;default:true"`
+	EmailNotificationsEnabled   bool    `gorm:"not null;default:true"`
+	Skills                      []Skill `gorm:"foreignKey:UserID"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	DeletedAt           gorm.DeletedAt `gorm:"index"`
