@@ -28,6 +28,7 @@ type Store interface {
 	CountMembers(uuid.UUID) (int64, error)
 	AddMember(*Member) error
 	SaveMember(*Member) error
+	UpsertMember(*Member) error
 	DeleteMember(projectID, userID uuid.UUID) error
 	IsMember(projectID, userID uuid.UUID) (bool, string, error)
 }
@@ -316,6 +317,21 @@ func (s *Service) RemoveMember(ctx context.Context, actor authctx.Principal, ip 
 
 func (s *Service) MemberRole(projectID, userID uuid.UUID) (bool, string, error) {
 	return s.repo.IsMember(projectID, userID)
+}
+
+// UpsertMemberRole adds the user to the project or updates their role.
+// Caller is responsible for authorization (used by resource allocation).
+func (s *Service) UpsertMemberRole(projectID, userID uuid.UUID, role string) error {
+	if role == "" {
+		role = RoleMember
+	}
+	if role != RoleLead && role != RoleMember && role != RoleViewer {
+		return apperr.ErrValidation.WithMessage("invalid project role")
+	}
+	if _, err := s.users.GetByID(userID); err != nil {
+		return apperr.ErrValidation.WithMessage("invalid userId")
+	}
+	return s.repo.UpsertMember(&Member{ProjectID: projectID, UserID: userID, Role: role})
 }
 
 func (s *Service) MustManage(actor authctx.Principal, projectID uuid.UUID) (*Project, error) {

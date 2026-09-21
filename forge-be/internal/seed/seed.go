@@ -2,12 +2,14 @@ package seed
 
 import (
 	"fmt"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"workspace/internal/rbac"
 	"workspace/internal/rbac/perm"
+	"workspace/internal/resource"
 	"workspace/internal/user"
 )
 
@@ -85,6 +87,10 @@ func Run(db *gorm.DB, adminEmail, adminPassword string) error {
 		}
 	}
 
+	if err := seedHolidays(db); err != nil {
+		return err
+	}
+
 	var count int64
 	if err := db.Model(&user.User{}).Where("email = ?", adminEmail).Count(&count).Error; err != nil {
 		return err
@@ -105,6 +111,37 @@ func Run(db *gorm.DB, adminEmail, adminPassword string) error {
 	}
 	if err := db.Create(&admin).Error; err != nil {
 		return fmt.Errorf("seed bootstrap admin: %w", err)
+	}
+	return nil
+}
+
+func seedHolidays(db *gorm.DB) error {
+	items := []struct {
+		date string
+		name string
+	}{
+		{"2026-01-01", "Tahun Baru Masehi"},
+		{"2026-03-21", "Hari Suci Nyepi"},
+		{"2026-05-01", "Hari Buruh Internasional"},
+		{"2026-08-17", "Hari Kemerdekaan RI"},
+		{"2026-12-25", "Hari Natal"},
+	}
+	for _, it := range items {
+		d, err := time.Parse("2006-01-02", it.date)
+		if err != nil {
+			return err
+		}
+		var n int64
+		if err := db.Model(&resource.Holiday{}).Where("date = ?", d).Count(&n).Error; err != nil {
+			return fmt.Errorf("seed holiday %s: %w", it.date, err)
+		}
+		if n > 0 {
+			continue
+		}
+		h := resource.Holiday{Date: d, Name: it.name}
+		if err := db.Create(&h).Error; err != nil {
+			return fmt.Errorf("seed holiday %s: %w", it.date, err)
+		}
 	}
 	return nil
 }

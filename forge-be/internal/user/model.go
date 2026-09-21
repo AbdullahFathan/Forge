@@ -19,11 +19,30 @@ type User struct {
 	Role                rbac.Role  `gorm:"constraint:OnUpdate:CASCADE,OnDelete:RESTRICT;"`
 	DepartmentID        *uuid.UUID `gorm:"type:uuid;index"`
 	Department          *department.Department
-	CapacityHoursPerDay int  `gorm:"not null;default:8"`
-	IsActive            bool `gorm:"not null;default:true"`
+	CapacityHoursPerDay int     `gorm:"not null;default:8"`
+	IsActive            bool    `gorm:"not null;default:true"`
+	Skills              []Skill `gorm:"foreignKey:UserID"`
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
 	DeletedAt           gorm.DeletedAt `gorm:"index"`
+}
+
+type Skill struct {
+	UserID uuid.UUID `gorm:"type:uuid;primaryKey"`
+	Skill  string    `gorm:"primaryKey;size:64"`
+}
+
+func (Skill) TableName() string { return "user_skills" }
+
+func SkillNames(u *User) []string {
+	if u == nil || len(u.Skills) == 0 {
+		return []string{}
+	}
+	out := make([]string, 0, len(u.Skills))
+	for _, s := range u.Skills {
+		out = append(out, s.Skill)
+	}
+	return out
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) error {

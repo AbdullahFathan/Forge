@@ -17,6 +17,7 @@ import (
 	"workspace/internal/project"
 	"workspace/internal/rbac"
 	"workspace/internal/rbac/perm"
+	"workspace/internal/resource"
 	"workspace/internal/task"
 	"workspace/internal/user"
 	"workspace/pkg/middleware"
@@ -43,6 +44,9 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 	deptH := department.NewHandler(deptSvc)
 	projH := project.NewHandler(projSvc)
 	taskH := task.NewHandler(taskSvc)
+	resRepo := resource.NewRepository(db)
+	resSvc := resource.NewService(resRepo, projSvc, taskRepo, auditor, nil)
+	resH := resource.NewHandler(resSvc)
 
 	r := chi.NewRouter()
 	r.Use(chimw.Recoverer)
@@ -117,6 +121,31 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 			r.With(middleware.Require(perm.TaskManage)).Delete("/{id}/dependencies/{depId}", taskH.RemoveDependency)
 			r.Get("/{id}/comments", taskH.ListComments)
 			r.With(middleware.Require(perm.TaskManage)).Post("/{id}/comments", taskH.AddComment)
+		})
+
+		r.Get("/me/workload", resH.Workload)
+
+		r.Route("/resources", func(r chi.Router) {
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.Require(perm.ResourceAllocate))
+				r.Get("/allocations", resH.ListAllocations)
+				r.Post("/allocations", resH.CreateAllocation)
+				r.Patch("/allocations/{id}", resH.PatchAllocation)
+				r.Delete("/allocations/{id}", resH.DeleteAllocation)
+			})
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.Require(perm.CapacityView))
+				r.Get("/capacity", resH.Capacity)
+				r.Get("/matrix", resH.Matrix)
+				r.Get("/availability", resH.Availability)
+				r.Get("/overload-alerts", resH.OverloadAlerts)
+			})
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.Require(perm.DepartmentManage))
+				r.Get("/holidays", resH.ListHolidays)
+				r.Post("/holidays", resH.CreateHoliday)
+				r.Delete("/holidays/{id}", resH.DeleteHoliday)
+			})
 		})
 	})
 

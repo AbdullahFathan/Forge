@@ -153,6 +153,18 @@ func (r *Repository) SaveMember(m *Member) error {
 	return r.db.Save(m).Error
 }
 
+func (r *Repository) UpsertMember(m *Member) error {
+	existing, err := r.GetMember(m.ProjectID, m.UserID)
+	if err != nil {
+		if ae, ok := apperr.As(err); ok && ae.Code == apperr.ErrNotFound.Code {
+			return r.AddMember(m)
+		}
+		return err
+	}
+	existing.Role = m.Role
+	return r.SaveMember(existing)
+}
+
 func (r *Repository) DeleteMember(projectID, userID uuid.UUID) error {
 	res := r.db.Where("project_id = ? AND user_id = ?", projectID, userID).Delete(&Member{})
 	if res.Error != nil {

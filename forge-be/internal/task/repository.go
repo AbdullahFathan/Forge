@@ -245,6 +245,16 @@ func (r *Repository) Completion(projectID uuid.UUID) (float64, project.TaskCount
 	return pct, c, nil
 }
 
+func (r *Repository) ListByAssignee(userID uuid.UUID) ([]Task, error) {
+	var rows []Task
+	err := r.preload(false).
+		Where("id IN (SELECT task_id FROM task_assignees WHERE user_id = ?)", userID).
+		Order("due_date ASC").
+		Order("created_at ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
 func (r *Repository) IsAssignee(taskID, userID uuid.UUID) (bool, error) {
 	var n int64
 	err := r.db.Table("task_assignees").Where("task_id = ? AND user_id = ?", taskID, userID).Count(&n).Error

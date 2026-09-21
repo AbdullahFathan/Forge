@@ -16,6 +16,7 @@ type Public struct {
 	DepartmentName      *string    `json:"departmentName,omitempty"`
 	CapacityHoursPerDay int        `json:"capacityHoursPerDay"`
 	IsActive            bool       `json:"isActive"`
+	Skills              []string   `json:"skills"`
 	CreatedAt           time.Time  `json:"createdAt"`
 	UpdatedAt           time.Time  `json:"updatedAt"`
 }
@@ -30,6 +31,7 @@ func ToPublic(u *User) Public {
 		DepartmentID:        u.DepartmentID,
 		CapacityHoursPerDay: u.CapacityHoursPerDay,
 		IsActive:            u.IsActive,
+		Skills:              SkillNames(u),
 		CreatedAt:           u.CreatedAt,
 		UpdatedAt:           u.UpdatedAt,
 	}

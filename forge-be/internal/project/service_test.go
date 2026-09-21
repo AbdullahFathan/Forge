@@ -107,7 +107,21 @@ func (f *fakeStore) AddMember(m *Member) error {
 	f.members[m.ProjectID] = append(f.members[m.ProjectID], *m)
 	return nil
 }
-func (f *fakeStore) SaveMember(m *Member) error { return nil }
+func (f *fakeStore) SaveMember(m *Member) error {
+	for i := range f.members[m.ProjectID] {
+		if f.members[m.ProjectID][i].UserID == m.UserID {
+			f.members[m.ProjectID][i] = *m
+			return nil
+		}
+	}
+	return apperr.ErrNotFound.WithMessage("member not found")
+}
+func (f *fakeStore) UpsertMember(m *Member) error {
+	if _, err := f.GetMember(m.ProjectID, m.UserID); err != nil {
+		return f.AddMember(m)
+	}
+	return f.SaveMember(m)
+}
 func (f *fakeStore) DeleteMember(projectID, userID uuid.UUID) error {
 	rows := f.members[projectID]
 	out := rows[:0]

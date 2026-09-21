@@ -30,6 +30,7 @@ type createRequest struct {
 	DepartmentID        *uuid.UUID `json:"departmentId"`
 	CapacityHoursPerDay int        `json:"capacityHoursPerDay" validate:"omitempty,min=1,max=24"`
 	IsActive            *bool      `json:"isActive"`
+	Skills              []string   `json:"skills"`
 }
 
 type patchRequest struct {
@@ -40,6 +41,7 @@ type patchRequest struct {
 	ClearDepartment     *bool      `json:"clearDepartment"`
 	CapacityHoursPerDay *int       `json:"capacityHoursPerDay" validate:"omitempty,min=1,max=24"`
 	IsActive            *bool      `json:"isActive"`
+	Skills              *[]string  `json:"skills"`
 }
 
 type mePatchRequest struct {
@@ -103,6 +105,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		DepartmentID:        req.DepartmentID,
 		CapacityHoursPerDay: req.CapacityHoursPerDay,
 		IsActive:            active,
+		Skills:              req.Skills,
 	})
 	if err != nil {
 		response.Error(w, err)
@@ -146,6 +149,7 @@ func (h *Handler) Patch(w http.ResponseWriter, r *http.Request) {
 		RoleID:              req.RoleID,
 		CapacityHoursPerDay: req.CapacityHoursPerDay,
 		IsActive:            req.IsActive,
+		Skills:              req.Skills,
 	}
 	if req.ClearDepartment != nil && *req.ClearDepartment {
 		var nilID *uuid.UUID

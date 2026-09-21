@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: WorkSpace API
   version: "1.1.0"
-  description: Phase 2 Project and Task Core
+  description: Phase 3 Resource and Capacity
 servers:
   - url: /
 tags:
@@ -12,6 +12,7 @@ tags:
   - name: departments
   - name: projects
   - name: tasks
+  - name: resources
 components:
   securitySchemes:
     BearerAuth:
@@ -45,6 +46,9 @@ components:
         departmentName: { type: string }
         capacityHoursPerDay: { type: integer }
         isActive: { type: boolean }
+        skills:
+          type: array
+          items: { type: string }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     Department:
@@ -536,3 +540,203 @@ paths:
       responses:
         "201":
           description: Created
+  /me/workload:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: My workload (self, or ?userId= with user.manage or capacity.view)
+      parameters:
+        - in: query
+          name: userId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Active allocations, assigned tasks, next 4 weeks load
+  /resources/allocations:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: List allocations (PM scoped to managed projects)
+      parameters:
+        - in: query
+          name: userId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: projectId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: from
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          schema: { type: string, format: date }
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Page of allocations
+    post:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Create allocation (overlap same user+project rejected; over 100% saved with warnings)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, projectId, allocationPercent, startDate, endDate]
+              properties:
+                userId: { type: string, format: uuid }
+                projectId: { type: string, format: uuid }
+                allocationPercent: { type: number }
+                startDate: { type: string, format: date }
+                endDate: { type: string, format: date }
+                role: { type: string, enum: [LEAD, MEMBER, VIEWER] }
+      responses:
+        "201":
+          description: Created with warnings[] and overAllocated
+  /resources/allocations/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Update allocation
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Soft-delete allocation (does not remove project member)
+      responses:
+        "200":
+          description: Deleted
+  /resources/capacity:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Capacity forecast (capacity.view; 4-12 weeks)
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: granularity
+          schema: { type: string, enum: [week, month] }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: skill
+          schema: { type: string }
+      responses:
+        "200":
+          description: Per-user buckets with utilizationPercent and band
+        "403":
+          description: Forbidden (e.g. Project Manager)
+  /resources/matrix:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Allocation matrix (departmentId required if more than 200 users)
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: granularity
+          schema: { type: string, enum: [week, month] }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: skill
+          schema: { type: string }
+      responses:
+        "200":
+          description: users, periods, cells
+  /resources/availability:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Users with utilization under 80% in the period
+      parameters:
+        - in: query
+          name: from
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: to
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Sorted by remaining capacity desc
+  /resources/overload-alerts:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Users over 100% on any day in the next 14 days
+      responses:
+        "200":
+          description: Overload alerts
+  /resources/holidays:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: List holidays (Admin / department.manage)
+      responses:
+        "200":
+          description: Holidays
+    post:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Create holiday
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, name]
+              properties:
+                date: { type: string, format: date }
+                name: { type: string }
+      responses:
+        "201":
+          description: Created
+  /resources/holidays/{id}:
+    delete:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Delete holiday
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted

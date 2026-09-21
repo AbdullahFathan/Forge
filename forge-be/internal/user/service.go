@@ -39,6 +39,7 @@ type CreateInput struct {
 	DepartmentID        *uuid.UUID
 	CapacityHoursPerDay int
 	IsActive            bool
+	Skills              []string
 }
 
 type PatchInput struct {
@@ -48,6 +49,7 @@ type PatchInput struct {
 	DepartmentID        **uuid.UUID
 	CapacityHoursPerDay *int
 	IsActive            *bool
+	Skills              *[]string
 }
 
 type MePatchInput struct {
@@ -100,6 +102,11 @@ func (s *Service) Create(in CreateInput) (*User, error) {
 	if err := s.users.Create(u); err != nil {
 		return nil, err
 	}
+	if in.Skills != nil {
+		if err := s.users.ReplaceSkills(u.ID, in.Skills); err != nil {
+			return nil, err
+		}
+	}
 	return s.users.GetByID(u.ID)
 }
 
@@ -143,6 +150,11 @@ func (s *Service) Patch(id uuid.UUID, in PatchInput) (*User, error) {
 	}
 	if err := s.users.Save(u); err != nil {
 		return nil, err
+	}
+	if in.Skills != nil {
+		if err := s.users.ReplaceSkills(u.ID, *in.Skills); err != nil {
+			return nil, err
+		}
 	}
 	return s.users.GetByID(u.ID)
 }

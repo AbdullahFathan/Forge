@@ -25,7 +25,7 @@ func NewRepository(db *gorm.DB) *Repository {
 }
 
 func (r *Repository) preload() *gorm.DB {
-	return r.db.Preload("Role.Permissions").Preload("Department")
+	return r.db.Preload("Role.Permissions").Preload("Department").Preload("Skills")
 }
 
 func (r *Repository) Create(u *User) error {
@@ -90,6 +90,31 @@ func (r *Repository) List(f ListFilter) ([]User, int64, error) {
 		Limit(f.PageSize).
 		Find(&rows).Error
 	return rows, total, err
+}
+
+func (r *Repository) ReplaceSkills(userID uuid.UUID, skills []string) error {
+	seen := map[string]struct{}{}
+	rows := make([]Skill, 0, len(skills))
+	for _, raw := range skills {
+		s := strings.ToLower(strings.TrimSpace(raw))
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		rows = append(rows, Skill{UserID: userID, Skill: s})
+	}
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("user_id = ?", userID).Delete(&Skill{}).Error; err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		return tx.Create(&rows).Error
+	})
 }
 
 func (r *Repository) SoftDelete(id uuid.UUID) error {
