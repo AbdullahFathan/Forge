@@ -1,0 +1,259 @@
+openapi: 3.0.3
+info:
+  title: WorkSpace API
+  version: "1.0.0"
+  description: Phase 1 Foundation & Auth
+servers:
+  - url: /
+tags:
+  - name: health
+  - name: auth
+  - name: users
+  - name: departments
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    EnvelopeError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details: {}
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        roleId: { type: string, format: uuid }
+        roleCode: { type: string }
+        departmentId: { type: string, format: uuid, nullable: true }
+        departmentName: { type: string }
+        capacityHoursPerDay: { type: integer }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Department:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Access token and user; refresh cookie set
+        "401":
+          description: Invalid credentials
+        "403":
+          description: Inactive user
+        "429":
+          description: Rate limited
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate refresh token
+      responses:
+        "200":
+          description: New access token
+        "401":
+          description: Invalid refresh
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Invalidate refresh family and clear cookie
+      responses:
+        "200":
+          description: Logged out
+  /users/me:
+    get:
+      tags: [users]
+      security: [{ BearerAuth: [] }]
+      summary: Current user profile
+      responses:
+        "200":
+          description: Profile
+        "401":
+          description: Unauthorized
+    patch:
+      tags: [users]
+      security: [{ BearerAuth: [] }]
+      summary: Update own name or password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                password: { type: string }
+                currentPassword: { type: string }
+      responses:
+        "200":
+          description: Updated profile
+  /users:
+    get:
+      tags: [users]
+      security: [{ BearerAuth: [] }]
+      summary: List users (user.manage)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+        - in: query
+          name: departmentId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: roleId
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Paged users
+        "403":
+          description: Forbidden
+    post:
+      tags: [users]
+      security: [{ BearerAuth: [] }]
+      summary: Create user (user.manage)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, roleId]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string }
+                roleId: { type: string, format: uuid }
+                departmentId: { type: string, format: uuid }
+                capacityHoursPerDay: { type: integer }
+                isActive: { type: boolean }
+      responses:
+        "201":
+          description: Created
+  /users/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [users]
+      security: [{ BearerAuth: [] }]
+      summary: Get user (user.manage)
+      responses:
+        "200":
+          description: User
+    patch:
+      tags: [users]
+      security: [{ BearerAuth: [] }]
+      summary: Update user (user.manage)
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [users]
+      security: [{ BearerAuth: [] }]
+      summary: Soft-delete user (user.manage)
+      responses:
+        "200":
+          description: Deleted
+  /departments:
+    get:
+      tags: [departments]
+      security: [{ BearerAuth: [] }]
+      summary: List departments (department.manage)
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Paged departments
+        "403":
+          description: Forbidden
+    post:
+      tags: [departments]
+      security: [{ BearerAuth: [] }]
+      summary: Create department
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Created
+  /departments/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [departments]
+      security: [{ BearerAuth: [] }]
+      summary: Get department
+      responses:
+        "200":
+          description: Department
+    patch:
+      tags: [departments]
+      security: [{ BearerAuth: [] }]
+      summary: Update department
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [departments]
+      security: [{ BearerAuth: [] }]
+      summary: Soft-delete department
+      responses:
+        "200":
+          description: Deleted
