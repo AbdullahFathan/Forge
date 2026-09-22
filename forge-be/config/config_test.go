@@ -26,10 +26,11 @@ func TestLoadOK(t *testing.T) {
 	t.Setenv("JWT_SECRET", "test-secret-at-least-32-characters-long")
 	t.Setenv("BOOTSTRAP_ADMIN_EMAIL", "a@b.com")
 	t.Setenv("BOOTSTRAP_ADMIN_PASSWORD", "password12")
-	t.Setenv("CORS_ORIGINS", "http://localhost:3000")
+	t.Setenv("CORS_ORIGINS", "http://localhost:3001")
 	cfg, err := Load()
 	require.NoError(t, err)
 	require.Equal(t, "8080", cfg.HTTPPort)
+	require.Equal(t, []string{"http://localhost:3001"}, cfg.CORSOrigins)
 	require.Equal(t, 25, cfg.DBMaxOpenConns)
 	require.Equal(t, "587", cfg.SMTPPort)
 }

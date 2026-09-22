@@ -92,7 +92,7 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	origins := envOr("CORS_ORIGINS", "http://localhost:3000")
+	origins := envOr("CORS_ORIGINS", "")
 	for _, o := range strings.Split(origins, ",") {
 		o = strings.TrimSpace(o)
 		if o != "" {

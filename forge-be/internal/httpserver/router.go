@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -74,13 +73,7 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 	r := chi.NewRouter()
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.RealIP)
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   cfg.CORSOrigins,
-		AllowedMethods:   []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID"},
-		AllowCredentials: true,
-		MaxAge:           300,
-	}))
+	r.Use(corsHandler(cfg.CORSOrigins))
 	r.Use(middleware.RequestLogger(log))
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
