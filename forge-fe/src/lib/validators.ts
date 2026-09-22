@@ -24,6 +24,11 @@ const fieldAliases: Record<string, string> = {
   assigneeids: "assigneeIds",
   dependsontaskid: "dependsOnTaskId",
   body: "body",
+  userid: "userId",
+  projectid: "projectId",
+  allocationpercent: "allocationPercent",
+  enddate: "endDate",
+  role: "role",
 }
 
 export function fieldKey(goField: string) {

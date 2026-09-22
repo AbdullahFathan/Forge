@@ -12,6 +12,8 @@ import { DepartmentsPage } from "@/features/departments/pages/departments-page"
 import { ProfilePage } from "@/features/profile/pages/profile-page"
 import { ProjectDetailPage } from "@/features/projects/pages/project-detail-page"
 import { ProjectsPage } from "@/features/projects/pages/projects-page"
+import { ResourcesPage } from "@/features/resources/pages/resources-page"
+import { WorkloadPage } from "@/features/resources/pages/workload-page"
 import { UsersPage } from "@/features/users/pages/users-page"
 import { can } from "@/lib/auth"
 import { PERMISSIONS } from "@/lib/constants"
@@ -39,6 +41,12 @@ function RequirePermission({ code }: { code: string }) {
   return <Outlet />
 }
 
+function RequireAnyPermission({ codes }: { codes: string[] }) {
+  const permissions = useSession((state) => state.permissions)
+  if (!codes.some((code) => can(permissions, code))) return <ForbiddenPage />
+  return <Outlet />
+}
+
 export function AppRouter() {
   return (
     <Routes>
@@ -59,10 +67,16 @@ export function AppRouter() {
           </Route>
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
-          <Route path="me/workload" element={<LaterPhasePage title="My workload" />} />
+          <Route path="me/workload" element={<WorkloadPage />} />
           <Route path="notifications" element={<LaterPhasePage title="Notifications" />} />
-          <Route element={<RequirePermission code={PERMISSIONS.capacityView} />}>
-            <Route path="resources" element={<LaterPhasePage title="Resources" />} />
+          <Route
+            element={
+              <RequireAnyPermission
+                codes={[PERMISSIONS.capacityView, PERMISSIONS.resourceAllocate]}
+              />
+            }
+          >
+            <Route path="resources" element={<ResourcesPage />} />
           </Route>
           <Route element={<RequirePermission code={PERMISSIONS.reportExport} />}>
             <Route path="reports" element={<LaterPhasePage title="Reports" />} />

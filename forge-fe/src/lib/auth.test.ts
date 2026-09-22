@@ -33,4 +33,20 @@ describe("visibleNav", () => {
     ]).map((item) => item.label)
     expect(labels).toEqual(expect.arrayContaining(["Users", "Audit log", "Resources", "Reports"]))
   })
+
+  it("shows Resources for a project manager with allocate only", () => {
+    const labels = visibleNav([PERMISSIONS.resourceAllocate, PERMISSIONS.projectCreate]).map(
+      (item) => item.label,
+    )
+    expect(labels).toContain("Resources")
+    expect(labels).not.toContain("Reports")
+    expect(labels).not.toContain("Audit log")
+  })
+
+  it("shows Resources for a resource manager", () => {
+    const labels = visibleNav([PERMISSIONS.capacityView, PERMISSIONS.resourceAllocate]).map(
+      (item) => item.label,
+    )
+    expect(labels).toContain("Resources")
+  })
 })

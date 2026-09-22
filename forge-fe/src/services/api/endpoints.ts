@@ -18,4 +18,11 @@ export const endpoints = {
   taskDependencies: (id: string) => `/tasks/${id}/dependencies`,
   taskDependency: (taskId: string, depId: string) => `/tasks/${taskId}/dependencies/${depId}`,
   taskComments: (id: string) => `/tasks/${id}/comments`,
+  resourcesAllocations: "/resources/allocations",
+  resourceAllocation: (id: string) => `/resources/allocations/${id}`,
+  resourcesCapacity: "/resources/capacity",
+  resourcesMatrix: "/resources/matrix",
+  resourcesAvailability: "/resources/availability",
+  resourcesOverloadAlerts: "/resources/overload-alerts",
+  meWorkload: "/me/workload",
 } as const
