@@ -10,6 +10,8 @@ import { DashboardPage } from "@/features/dashboard/pages/dashboard-page"
 import { DevPage } from "@/features/dashboard/pages/dev-page"
 import { DepartmentsPage } from "@/features/departments/pages/departments-page"
 import { ProfilePage } from "@/features/profile/pages/profile-page"
+import { ProjectDetailPage } from "@/features/projects/pages/project-detail-page"
+import { ProjectsPage } from "@/features/projects/pages/projects-page"
 import { UsersPage } from "@/features/users/pages/users-page"
 import { can } from "@/lib/auth"
 import { PERMISSIONS } from "@/lib/constants"
@@ -55,7 +57,8 @@ export function AppRouter() {
           <Route element={<RequirePermission code={PERMISSIONS.departmentManage} />}>
             <Route path="departments" element={<DepartmentsPage />} />
           </Route>
-          <Route path="projects" element={<LaterPhasePage title="Projects" />} />
+          <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="me/workload" element={<LaterPhasePage title="My workload" />} />
           <Route path="notifications" element={<LaterPhasePage title="Notifications" />} />
           <Route element={<RequirePermission code={PERMISSIONS.capacityView} />}>

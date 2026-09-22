@@ -2,6 +2,7 @@ import { BellIcon } from "lucide-react"
 import { Link, useLocation } from "react-router"
 
 import { formatRole } from "@/lib/auth"
+import { usePageCrumb } from "@/lib/breadcrumb"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -53,7 +54,9 @@ function initials(name: string) {
 export function Navbar() {
   const { pathname } = useLocation()
   const { user, role, logout } = useAuth()
-  const current = crumbs[pathname] ?? "WorkSpace"
+  const detailLabel = usePageCrumb((state) => state.detailLabel)
+  const projectMatch = pathname.match(/^\/projects\/([^/]+)$/)
+  const current = crumbs[pathname] ?? (projectMatch ? "Projects" : "WorkSpace")
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -65,9 +68,21 @@ export function Navbar() {
             <BreadcrumbLink render={<Link to="/" />}>WorkSpace</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{current}</BreadcrumbPage>
-          </BreadcrumbItem>
+          {projectMatch ? (
+            <>
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link to="/projects" />}>Projects</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{detailLabel ?? "Project"}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </>
+          ) : (
+            <BreadcrumbItem>
+              <BreadcrumbPage>{current}</BreadcrumbPage>
+            </BreadcrumbItem>
+          )}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="ml-auto flex items-center gap-2">

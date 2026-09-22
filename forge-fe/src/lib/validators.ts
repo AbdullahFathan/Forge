@@ -13,6 +13,17 @@ const fieldAliases: Record<string, string> = {
   currentpassword: "currentPassword",
   emailnotificationsenabled: "emailNotificationsEnabled",
   skills: "skills",
+  startdate: "startDate",
+  targetenddate: "targetEndDate",
+  ownerid: "ownerId",
+  tags: "tags",
+  parenttaskid: "parentTaskId",
+  estimatedhours: "estimatedHours",
+  duedate: "dueDate",
+  labels: "labels",
+  assigneeids: "assigneeIds",
+  dependsontaskid: "dependsOnTaskId",
+  body: "body",
 }
 
 export function fieldKey(goField: string) {

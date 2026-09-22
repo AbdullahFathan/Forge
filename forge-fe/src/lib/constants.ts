@@ -4,6 +4,9 @@ export const RETURN_TO_KEY = "workspace.returnTo"
 
 export const DEFAULT_PAGE_SIZE = 20
 
+export const ROLE_SUPER_ADMIN = "SUPER_ADMIN"
+export const ROLE_ADMIN = "ADMIN"
+
 export const PERMISSIONS = {
   userManage: "user.manage",
   roleManage: "role.manage",
