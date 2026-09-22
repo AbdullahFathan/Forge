@@ -1,3 +1,5 @@
+import { Fragment, useState } from "react"
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
@@ -31,6 +33,7 @@ export function EntityTable<T>({
   pageSize,
   totalItems,
   onPageChange,
+  renderExpanded,
 }: {
   columns: EntityColumn<T>[]
   rows: T[]
@@ -44,8 +47,11 @@ export function EntityTable<T>({
   pageSize: number
   totalItems: number
   onPageChange: (page: number) => void
+  renderExpanded?: (row: T) => React.ReactNode
 }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const pageCount = Math.max(1, Math.ceil(totalItems / pageSize))
+  const colSpan = columns.length + (renderExpanded ? 1 : 0)
 
   if (error) {
     return (
@@ -73,6 +79,7 @@ export function EntityTable<T>({
       <Table>
         <TableHeader>
           <TableRow>
+            {renderExpanded ? <TableHead className="w-20 px-3 py-2">Detail</TableHead> : null}
             {columns.map((column) => (
               <TableHead key={column.key} className="px-3 py-2">
                 {column.header}
@@ -84,22 +91,47 @@ export function EntityTable<T>({
           {isLoading
             ? Array.from({ length: 5 }, (_, index) => (
                 <TableRow key={index}>
-                  {columns.map((column) => (
-                    <TableCell key={column.key} className="px-3 py-2">
+                  {Array.from({ length: colSpan }, (_, cell) => (
+                    <TableCell key={cell} className="px-3 py-2">
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
                   ))}
                 </TableRow>
               ))
-            : rows.map((row) => (
-                <TableRow key={rowKey(row)}>
-                  {columns.map((column) => (
-                    <TableCell key={column.key} className={column.className ?? "px-3 py-2"}>
-                      {column.cell(row)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
+            : rows.map((row) => {
+                const id = rowKey(row)
+                const open = expandedId === id
+                return (
+                  <Fragment key={id}>
+                    <TableRow>
+                      {renderExpanded ? (
+                        <TableCell className="px-3 py-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExpandedId(open ? null : id)}
+                          >
+                            {open ? "Hide" : "Show"}
+                          </Button>
+                        </TableCell>
+                      ) : null}
+                      {columns.map((column) => (
+                        <TableCell key={column.key} className={column.className ?? "px-3 py-2"}>
+                          {column.cell(row)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {open && renderExpanded ? (
+                      <TableRow>
+                        <TableCell colSpan={colSpan} className="px-3 py-2">
+                          {renderExpanded(row)}
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </Fragment>
+                )
+              })}
         </TableBody>
       </Table>
       <div className="flex items-center justify-between gap-2">

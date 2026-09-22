@@ -12,10 +12,12 @@ export function ChartCard({
   title,
   description,
   data,
+  unit = "%",
 }: {
   title: string
   description?: string
   data: ChartPoint[]
+  unit?: string
 }) {
   return (
     <Card>
@@ -32,7 +34,7 @@ export function ChartCard({
               <BarChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="period" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} unit="%" />
+                <YAxis tick={{ fontSize: 12 }} unit={unit} />
                 <Tooltip />
                 <Bar dataKey="value" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
               </BarChart>

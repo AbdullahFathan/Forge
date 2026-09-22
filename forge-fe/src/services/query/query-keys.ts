@@ -19,4 +19,9 @@ export const queryKeys = {
   availability: (params: Record<string, unknown>) => ["resources", "availability", params] as const,
   overloadAlerts: ["resources", "overload-alerts"] as const,
   workload: (userId?: string) => ["me", "workload", userId ?? "self"] as const,
+  dashboard: (kind: string) => ["dashboards", kind] as const,
+  notifications: (params: Record<string, unknown>) => ["notifications", params] as const,
+  notificationsUnread: ["notifications", "unread-count"] as const,
+  auditLogs: (params: Record<string, unknown>) => ["audit-logs", params] as const,
+  reports: (kind: string, params: Record<string, unknown>) => ["reports", kind, params] as const,
 }

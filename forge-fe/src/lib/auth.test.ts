@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest"
 
-import { can, visibleNav } from "@/lib/auth"
-import { PERMISSIONS } from "@/lib/constants"
+import { can, dashboardKind, visibleNav } from "@/lib/auth"
+import {
+  PERMISSIONS,
+  ROLE_ADMIN,
+  ROLE_PROJECT_MANAGER,
+  ROLE_RESOURCE_MANAGER,
+  ROLE_SUPER_ADMIN,
+} from "@/lib/constants"
 
 describe("can", () => {
   it("allows a held permission", () => {
@@ -22,6 +28,7 @@ describe("visibleNav", () => {
     expect(labels).not.toContain("Audit log")
     expect(labels).not.toContain("Resources")
     expect(labels).not.toContain("Reports")
+    expect(labels).toContain("Notifications")
   })
 
   it("shows admin items when permissions match", () => {
@@ -48,5 +55,26 @@ describe("visibleNav", () => {
       (item) => item.label,
     )
     expect(labels).toContain("Resources")
+  })
+
+  it("shows Reports but not Audit for a resource manager with export", () => {
+    const labels = visibleNav([
+      PERMISSIONS.capacityView,
+      PERMISSIONS.resourceAllocate,
+      PERMISSIONS.reportExport,
+    ]).map((item) => item.label)
+    expect(labels).toContain("Reports")
+    expect(labels).not.toContain("Audit log")
+    expect(labels).not.toContain("Users")
+  })
+})
+
+describe("dashboardKind", () => {
+  it("maps admin to executive and others to member", () => {
+    expect(dashboardKind(ROLE_SUPER_ADMIN)).toBe("executive")
+    expect(dashboardKind(ROLE_ADMIN)).toBe("executive")
+    expect(dashboardKind(ROLE_PROJECT_MANAGER)).toBe("project-manager")
+    expect(dashboardKind(ROLE_RESOURCE_MANAGER)).toBe("member")
+    expect(dashboardKind(null)).toBe("member")
   })
 })

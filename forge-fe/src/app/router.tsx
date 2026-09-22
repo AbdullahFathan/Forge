@@ -5,6 +5,9 @@ import { AuthLayout } from "@/app/layouts/auth-layout"
 import { ForbiddenPage } from "@/components/common/forbidden-page"
 import { LaterPhasePage } from "@/components/common/later-phase-page"
 import { NotFoundPage } from "@/components/common/not-found-page"
+import { AuditPage } from "@/features/audit/pages/audit-page"
+import { NotificationsPage } from "@/features/notifications/pages/notifications-page"
+import { ReportsPage } from "@/features/reports/pages/reports-page"
 import { LoginPage } from "@/features/auth/pages/login-page"
 import { DashboardPage } from "@/features/dashboard/pages/dashboard-page"
 import { DevPage } from "@/features/dashboard/pages/dev-page"
@@ -68,7 +71,7 @@ export function AppRouter() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="me/workload" element={<WorkloadPage />} />
-          <Route path="notifications" element={<LaterPhasePage title="Notifications" />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route
             element={
               <RequireAnyPermission
@@ -79,10 +82,10 @@ export function AppRouter() {
             <Route path="resources" element={<ResourcesPage />} />
           </Route>
           <Route element={<RequirePermission code={PERMISSIONS.reportExport} />}>
-            <Route path="reports" element={<LaterPhasePage title="Reports" />} />
+            <Route path="reports" element={<ReportsPage />} />
           </Route>
           <Route element={<RequirePermission code={PERMISSIONS.auditRead} />}>
-            <Route path="audit" element={<LaterPhasePage title="Audit log" />} />
+            <Route path="audit" element={<AuditPage />} />
           </Route>
           <Route element={<RequirePermission code={PERMISSIONS.roleManage} />}>
             <Route path="roles" element={<LaterPhasePage title="Roles" />} />

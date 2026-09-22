@@ -1,4 +1,17 @@
-import { PERMISSIONS } from "@/lib/constants"
+import {
+  PERMISSIONS,
+  ROLE_ADMIN,
+  ROLE_PROJECT_MANAGER,
+  ROLE_SUPER_ADMIN,
+} from "@/lib/constants"
+
+export type DashboardKind = "executive" | "project-manager" | "member"
+
+export function dashboardKind(role: string | null | undefined): DashboardKind {
+  if (role === ROLE_SUPER_ADMIN || role === ROLE_ADMIN) return "executive"
+  if (role === ROLE_PROJECT_MANAGER) return "project-manager"
+  return "member"
+}
 
 export function can(permissions: readonly string[] | undefined, code: string) {
   return Boolean(permissions?.includes(code))

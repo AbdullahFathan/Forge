@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 
 import { EntityTable } from "@/components/common/entity-table"
+import { JsonDiff } from "@/components/common/json-diff"
 import { listProjectActivity } from "@/features/projects/api/projects"
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
 import { ApiError } from "@/types/api"
@@ -39,6 +40,7 @@ export function ProjectActivityTab({ projectId }: { projectId: string }) {
       pageSize={list.data?.pageSize ?? DEFAULT_PAGE_SIZE}
       totalItems={list.data?.totalItems ?? 0}
       onPageChange={setPage}
+      renderExpanded={(row) => <JsonDiff before={row.before} after={row.after} />}
     />
   )
 }

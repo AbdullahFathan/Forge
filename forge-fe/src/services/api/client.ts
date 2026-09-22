@@ -40,6 +40,21 @@ export function toApiError(error: AxiosError<Envelope<unknown>>) {
   })
 }
 
+export async function toApiErrorAsync(error: AxiosError<Envelope<unknown> | Blob>) {
+  const data = error.response?.data
+  if (typeof Blob !== "undefined" && data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text()) as Envelope<unknown>
+      if (parsed?.error) {
+        return new ApiError(error.response?.status ?? 400, parsed.error)
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return toApiError(error as AxiosError<Envelope<unknown>>)
+}
+
 function isAuthPath(url: string | undefined) {
   if (!url) return false
   return (
@@ -135,7 +150,7 @@ export function createApiClient(options?: {
           )
         }
       }
-      return Promise.reject(toApiError(error))
+      return Promise.reject(await toApiErrorAsync(error))
     },
   )
 
