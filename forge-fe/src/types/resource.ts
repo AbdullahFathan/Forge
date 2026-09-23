@@ -133,4 +133,11 @@ export type Workload = {
   weekSeries: CapacityBucket[]
 }
 
+export type HolidayPublic = {
+  id: string
+  date: string
+  name: string
+  createdAt: string
+}
+
 export const OVER_ALLOCATED_WARNING = "OVER_ALLOCATED"

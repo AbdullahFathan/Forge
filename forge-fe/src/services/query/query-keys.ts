@@ -18,6 +18,7 @@ export const queryKeys = {
   matrix: (params: Record<string, unknown>) => ["resources", "matrix", params] as const,
   availability: (params: Record<string, unknown>) => ["resources", "availability", params] as const,
   overloadAlerts: ["resources", "overload-alerts"] as const,
+  holidays: ["resources", "holidays"] as const,
   workload: (userId?: string) => ["me", "workload", userId ?? "self"] as const,
   dashboard: (kind: string) => ["dashboards", kind] as const,
   notifications: (params: Record<string, unknown>) => ["notifications", params] as const,

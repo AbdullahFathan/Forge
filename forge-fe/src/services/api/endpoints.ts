@@ -24,6 +24,8 @@ export const endpoints = {
   resourcesMatrix: "/resources/matrix",
   resourcesAvailability: "/resources/availability",
   resourcesOverloadAlerts: "/resources/overload-alerts",
+  resourcesHolidays: "/resources/holidays",
+  resourceHoliday: (id: string) => `/resources/holidays/${id}`,
   meWorkload: "/me/workload",
   dashboardExecutive: "/dashboards/executive",
   dashboardProjectManager: "/dashboards/project-manager",

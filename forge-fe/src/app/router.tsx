@@ -12,6 +12,7 @@ import { LoginPage } from "@/features/auth/pages/login-page"
 import { DashboardPage } from "@/features/dashboard/pages/dashboard-page"
 import { DevPage } from "@/features/dashboard/pages/dev-page"
 import { DepartmentsPage } from "@/features/departments/pages/departments-page"
+import { HolidaysPage } from "@/features/holidays/pages/holidays-page"
 import { ProfilePage } from "@/features/profile/pages/profile-page"
 import { ProjectDetailPage } from "@/features/projects/pages/project-detail-page"
 import { ProjectsPage } from "@/features/projects/pages/projects-page"
@@ -90,8 +91,8 @@ export function AppRouter() {
           <Route element={<RequirePermission code={PERMISSIONS.roleManage} />}>
             <Route path="roles" element={<LaterPhasePage title="Roles" />} />
           </Route>
-          <Route element={<RequirePermission code={PERMISSIONS.systemConfigure} />}>
-            <Route path="holidays" element={<LaterPhasePage title="Holidays" />} />
+          <Route element={<RequirePermission code={PERMISSIONS.departmentManage} />}>
+            <Route path="holidays" element={<HolidaysPage />} />
           </Route>
           {import.meta.env.DEV ? <Route path="dev" element={<DevPage />} /> : null}
         </Route>

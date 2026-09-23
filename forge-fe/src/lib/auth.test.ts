@@ -28,6 +28,7 @@ describe("visibleNav", () => {
     expect(labels).not.toContain("Audit log")
     expect(labels).not.toContain("Resources")
     expect(labels).not.toContain("Reports")
+    expect(labels).not.toContain("Holidays")
     expect(labels).toContain("Notifications")
   })
 
@@ -39,6 +40,12 @@ describe("visibleNav", () => {
       PERMISSIONS.reportExport,
     ]).map((item) => item.label)
     expect(labels).toEqual(expect.arrayContaining(["Users", "Audit log", "Resources", "Reports"]))
+  })
+
+  it("shows Holidays when department.manage is held", () => {
+    const labels = visibleNav([PERMISSIONS.departmentManage]).map((item) => item.label)
+    expect(labels).toContain("Holidays")
+    expect(labels).toContain("Departments")
   })
 
   it("shows Resources for a project manager with allocate only", () => {

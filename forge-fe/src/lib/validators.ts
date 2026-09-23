@@ -28,6 +28,7 @@ const fieldAliases: Record<string, string> = {
   projectid: "projectId",
   allocationpercent: "allocationPercent",
   enddate: "endDate",
+  date: "date",
   role: "role",
 }
 

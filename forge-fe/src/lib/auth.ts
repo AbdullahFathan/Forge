@@ -39,7 +39,7 @@ export const navItems: NavItem[] = [
   { label: "Users", to: "/users", permission: PERMISSIONS.userManage },
   { label: "Departments", to: "/departments", permission: PERMISSIONS.departmentManage },
   { label: "Roles", to: "/roles", permission: PERMISSIONS.roleManage },
-  { label: "Holidays", to: "/holidays", permission: PERMISSIONS.systemConfigure },
+  { label: "Holidays", to: "/holidays", permission: PERMISSIONS.departmentManage },
 ]
 
 export function visibleNav(permissions: readonly string[]) {
