@@ -31,6 +31,7 @@ import {
   removeTaskDependency,
 } from "@/features/tasks/api/tasks"
 import { commentSchema, type CommentValues } from "@/features/tasks/schema"
+import { TaskDependencyTree } from "@/features/tasks/components/task-dependency-tree"
 import { flattenTasks } from "@/features/tasks/flatten"
 import { ApiError } from "@/types/api"
 import type { TaskPublic } from "@/types/task"
@@ -122,31 +123,19 @@ export function TaskSheet({
                 </Alert>
               ) : null}
               <div className="flex flex-col gap-2">
-                <h3 className="font-medium">Depends on</h3>
-                {task.dependsOn.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No predecessors.</p>
-                ) : (
-                  <ul className="flex flex-col gap-1">
-                    {task.dependsOn.map((dep) => (
-                      <li key={dep.id} className="flex items-center justify-between gap-2 text-sm">
-                        <span>
-                          {dep.name ?? dep.taskId.slice(0, 8)}{" "}
-                          {dep.status ? <StatusBadge kind="task" value={dep.status} /> : null}
-                        </span>
-                        {canManageDeps ? (
-                          <Button variant="ghost" size="sm" onClick={() => removeDep.mutate(dep.id)}>
+                <TaskDependencyTree
+                  task={task}
+                  allTasks={allTasks}
+                  predecessorAction={
+                    canManageDeps
+                      ? (depId) => (
+                          <Button variant="ghost" size="sm" onClick={() => removeDep.mutate(depId)}>
                             Remove
                           </Button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {task.dependents.length > 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Blocks {task.dependents.length} later task{task.dependents.length === 1 ? "" : "s"}.
-                  </p>
-                ) : null}
+                        )
+                      : undefined
+                  }
+                />
                 {canManageDeps ? (
                   <div className="flex gap-2">
                     <Select value={dependsOnTaskId} onValueChange={(value) => setDependsOnTaskId(value ?? "")}>

@@ -14,6 +14,7 @@ import { listProjectMembers } from "@/features/projects/api/members"
 import { getProject } from "@/features/projects/api/projects"
 import { ProjectActivityTab } from "@/features/projects/components/project-activity-tab"
 import { ProjectMembersTab } from "@/features/projects/components/project-members-tab"
+import { ProjectOverviewTimeline } from "@/features/projects/components/project-overview-timeline"
 import { ProjectTasksTab } from "@/features/tasks/components/project-tasks-tab"
 import { usePageCrumb } from "@/lib/breadcrumb"
 import { canManageProject } from "@/lib/project-access"
@@ -105,6 +106,12 @@ export function ProjectDetailPage() {
               <CardContent className="font-mono text-2xl tabular-nums">{counts.total}</CardContent>
             </Card>
           </div>
+          <ProjectOverviewTimeline
+            startDate={summary.startDate}
+            targetEndDate={summary.targetEndDate}
+            completionPercent={summary.completionPercent}
+            status={summary.status}
+          />
           <Card>
             <CardHeader>
               <CardTitle>Status counts</CardTitle>
