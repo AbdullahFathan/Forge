@@ -12,3 +12,9 @@ export type RoleSummary = {
   isSystem: boolean
   permissionCodes: string[]
 }
+
+export type Permission = {
+  id: string
+  code: string
+  name: string
+}

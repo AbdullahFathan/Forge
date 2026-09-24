@@ -26,7 +26,7 @@ type Role struct {
 	ID          uuid.UUID    `gorm:"type:uuid;primaryKey"`
 	Code        string       `gorm:"uniqueIndex;not null;size:64"`
 	Name        string       `gorm:"not null;size:128"`
-	IsSystem    bool         `gorm:"not null;default:true"`
+	IsSystem    bool         `gorm:"not null;default:false"`
 	Permissions []Permission `gorm:"many2many:role_permissions;"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

@@ -8,6 +8,8 @@ export const endpoints = {
   departments: "/departments",
   department: (id: string) => `/departments/${id}`,
   roles: "/roles",
+  role: (id: string) => `/roles/${id}`,
+  permissions: "/permissions",
   projects: "/projects",
   project: (id: string) => `/projects/${id}`,
   projectMembers: (id: string) => `/projects/${id}/members`,

@@ -87,6 +87,14 @@ func Run(db *gorm.DB, adminEmail, adminPassword string) error {
 		}
 	}
 
+	if err := db.Model(&rbac.Role{}).
+		Where("code NOT IN ?", []string{
+			perm.RoleSuperAdmin, perm.RoleAdmin, perm.RoleResourceManager, perm.RoleProjectManager, perm.RoleMember,
+		}).
+		Update("is_system", false).Error; err != nil {
+		return fmt.Errorf("normalize custom role is_system: %w", err)
+	}
+
 	if err := seedHolidays(db); err != nil {
 		return err
 	}

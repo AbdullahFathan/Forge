@@ -1,0 +1,5 @@
+ALTER TABLE roles ALTER COLUMN is_system SET DEFAULT false;
+
+UPDATE roles
+SET is_system = false
+WHERE code NOT IN ('SUPER_ADMIN', 'ADMIN', 'RESOURCE_MANAGER', 'PROJECT_MANAGER', 'MEMBER');

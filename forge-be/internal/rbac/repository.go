@@ -23,7 +23,9 @@ func (r *Repository) ListRoles() ([]Role, error) {
 }
 
 func (r *Repository) CreateRole(role *Role) error {
-	return r.db.Create(role).Error
+	// Include IsSystem so false is written; GORM otherwise skips the bool zero value
+	// and the column default would mark custom roles as system.
+	return r.db.Select("ID", "Code", "Name", "IsSystem", "CreatedAt", "UpdatedAt").Create(role).Error
 }
 
 func (r *Repository) SaveRole(role *Role) error {

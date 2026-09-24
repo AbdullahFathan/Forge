@@ -135,6 +135,10 @@ export function AllocationsPanel({
       {warning ? (
         <OverAllocationBanner overAllocated={warning.overAllocated} warnings={warning.warnings} />
       ) : null}
+      <p className="text-xs text-muted-foreground">
+        Project-level allocation: percent of capacity on a project. Task assignment does not use
+        this percent.
+      </p>
       <FilterBar>
         {canPickUsers ? (
           <Select

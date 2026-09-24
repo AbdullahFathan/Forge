@@ -30,6 +30,7 @@ const fieldAliases: Record<string, string> = {
   enddate: "endDate",
   date: "date",
   role: "role",
+  permissioncodes: "permissionCodes",
 }
 
 export function fieldKey(goField: string) {

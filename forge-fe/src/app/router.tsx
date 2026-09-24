@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router"
 import { AppLayout } from "@/app/layouts/app-layout"
 import { AuthLayout } from "@/app/layouts/auth-layout"
 import { ForbiddenPage } from "@/components/common/forbidden-page"
-import { LaterPhasePage } from "@/components/common/later-phase-page"
+import { RolesPage } from "@/features/roles/pages/roles-page"
 import { NotFoundPage } from "@/components/common/not-found-page"
 import { AuditPage } from "@/features/audit/pages/audit-page"
 import { NotificationsPage } from "@/features/notifications/pages/notifications-page"
@@ -89,7 +89,7 @@ export function AppRouter() {
             <Route path="audit" element={<AuditPage />} />
           </Route>
           <Route element={<RequirePermission code={PERMISSIONS.roleManage} />}>
-            <Route path="roles" element={<LaterPhasePage title="Roles" />} />
+            <Route path="roles" element={<RolesPage />} />
           </Route>
           <Route element={<RequirePermission code={PERMISSIONS.departmentManage} />}>
             <Route path="holidays" element={<HolidaysPage />} />

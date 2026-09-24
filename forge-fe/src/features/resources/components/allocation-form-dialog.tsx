@@ -99,8 +99,9 @@ export function AllocationFormDialog({
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit allocation" : "New allocation"}</DialogTitle>
           <DialogDescription>
-            Saving adds the person as a project member (or updates their project role). Removing an
-            allocation does not remove them from the project.
+            Percent is a project-level allocation of capacity (not a task assignment). Saving adds
+            the person as a project member (or updates their project role). Removing an allocation
+            does not remove them from the project.
           </DialogDescription>
         </DialogHeader>
         <form className="flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
