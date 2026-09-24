@@ -2,14 +2,16 @@ import {
   PERMISSIONS,
   ROLE_ADMIN,
   ROLE_PROJECT_MANAGER,
+  ROLE_RESOURCE_MANAGER,
   ROLE_SUPER_ADMIN,
 } from "@/lib/constants"
 
-export type DashboardKind = "executive" | "project-manager" | "member"
+export type DashboardKind = "executive" | "project-manager" | "resource-manager" | "member"
 
 export function dashboardKind(role: string | null | undefined): DashboardKind {
   if (role === ROLE_SUPER_ADMIN || role === ROLE_ADMIN) return "executive"
   if (role === ROLE_PROJECT_MANAGER) return "project-manager"
+  if (role === ROLE_RESOURCE_MANAGER) return "resource-manager"
   return "member"
 }
 

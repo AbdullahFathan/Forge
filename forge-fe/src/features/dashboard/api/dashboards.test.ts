@@ -10,7 +10,7 @@ import {
 } from "@/lib/constants"
 import { endpoints } from "@/services/api/endpoints"
 
-import { dashboardPath, dashboardWidgetLabels } from "./dashboards"
+import { dashboardPath, dashboardWidgetLabels, usesDashboardApi } from "./dashboards"
 
 describe("dashboardPath", () => {
   it("sends Super Admin and Admin to executive only", () => {
@@ -22,12 +22,20 @@ describe("dashboardPath", () => {
     expect(dashboardPath(dashboardKind(ROLE_PROJECT_MANAGER))).toBe(endpoints.dashboardProjectManager)
   })
 
-  it("never sends Member or Resource Manager to executive", () => {
-    for (const role of [ROLE_RESOURCE_MANAGER, ROLE_MEMBER, null]) {
-      const path = dashboardPath(dashboardKind(role))
-      expect(path).toBe(endpoints.dashboardMember)
-      expect(path).not.toBe(endpoints.dashboardExecutive)
-    }
+  it("sends Member to the member dashboard only", () => {
+    const path = dashboardPath(dashboardKind(ROLE_MEMBER))
+    expect(path).toBe(endpoints.dashboardMember)
+    expect(path).not.toBe(endpoints.dashboardExecutive)
+  })
+
+  it("never sends Resource Manager to a dashboard API", () => {
+    const kind = dashboardKind(ROLE_RESOURCE_MANAGER)
+    expect(kind).toBe("resource-manager")
+    expect(usesDashboardApi(kind)).toBe(false)
+    expect(dashboardPath(kind)).toBeNull()
+    expect(dashboardPath(kind)).not.toBe(endpoints.dashboardExecutive)
+    expect(dashboardPath(kind)).not.toBe(endpoints.dashboardProjectManager)
+    expect(dashboardPath(kind)).not.toBe(endpoints.dashboardMember)
   })
 })
 
@@ -49,5 +57,12 @@ describe("dashboardWidgetLabels", () => {
     expect(labels).toEqual(expect.arrayContaining(["Assigned tasks", "This week’s load"]))
     expect(labels).not.toContain("Org utilization")
     expect(labels).not.toContain("Late")
+  })
+
+  it("shows RM capacity widgets, not assigned tasks", () => {
+    const labels = dashboardWidgetLabels("resource-manager")
+    expect(labels).toEqual(expect.arrayContaining(["Overload (14 days)", "Available"]))
+    expect(labels).not.toContain("Assigned tasks")
+    expect(labels).not.toContain("Org utilization")
   })
 })

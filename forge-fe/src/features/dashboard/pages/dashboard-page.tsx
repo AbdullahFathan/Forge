@@ -10,9 +10,11 @@ import { PriorityBadge } from "@/components/common/priority-badge"
 import { StatusBadge } from "@/components/common/status-badge"
 import { CapacityCell } from "@/components/common/capacity-cell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { getDashboard } from "@/features/dashboard/api/dashboards"
+import { getDashboard, usesDashboardApi } from "@/features/dashboard/api/dashboards"
+import { ResourceManagerView } from "@/features/dashboard/components/resource-manager-view"
 import { dashboardKind } from "@/lib/auth"
 import { useSession } from "@/lib/session"
 import { queryKeys } from "@/services/query/query-keys"
@@ -315,20 +317,33 @@ function MemberView({ data }: { data: MemberDashboard }) {
 export function DashboardPage() {
   const role = useSession((state) => state.role)
   const kind = dashboardKind(role)
+  const fetchDashboard = Boolean(role) && usesDashboardApi(kind)
   const dash = useQuery({
     queryKey: queryKeys.dashboard(kind),
     queryFn: () => getDashboard(kind),
-    enabled: Boolean(role),
+    enabled: fetchDashboard,
   })
 
   const error =
     dash.error instanceof ApiError ? dash.error.message : dash.error ? "Could not load dashboard" : null
 
+  const description =
+    kind === "resource-manager"
+      ? "Overload looks 14 days ahead. Availability uses the 4-week window from Resources."
+      : "Summary for your role. Late projects and utilization come from the API."
+
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Dashboard"
-        description="Summary for your role. Late projects and utilization come from the API."
+        description={description}
+        actions={
+          kind === "resource-manager" ? (
+            <Link className={buttonVariants({ variant: "outline" })} to="/resources">
+              View resources
+            </Link>
+          ) : null
+        }
       />
       {error ? (
         <Alert variant="destructive">
@@ -336,13 +351,14 @@ export function DashboardPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
-      {dash.isLoading || !role ? <DashboardSkeleton /> : null}
+      {!role || (fetchDashboard && dash.isLoading) ? <DashboardSkeleton /> : null}
       {kind === "executive" && dash.data ? (
         <ExecutiveView data={dash.data as ExecutiveDashboard} />
       ) : null}
       {kind === "project-manager" && dash.data ? (
         <ProjectManagerView data={dash.data as ProjectManagerDashboard} />
       ) : null}
+      {kind === "resource-manager" && role ? <ResourceManagerView /> : null}
       {kind === "member" && dash.data ? <MemberView data={dash.data as MemberDashboard} /> : null}
     </div>
   )

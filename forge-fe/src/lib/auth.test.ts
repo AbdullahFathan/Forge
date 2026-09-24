@@ -77,11 +77,11 @@ describe("visibleNav", () => {
 })
 
 describe("dashboardKind", () => {
-  it("maps admin to executive and others to member", () => {
+  it("maps admin to executive, RM to resource-manager, others to member", () => {
     expect(dashboardKind(ROLE_SUPER_ADMIN)).toBe("executive")
     expect(dashboardKind(ROLE_ADMIN)).toBe("executive")
     expect(dashboardKind(ROLE_PROJECT_MANAGER)).toBe("project-manager")
-    expect(dashboardKind(ROLE_RESOURCE_MANAGER)).toBe("member")
+    expect(dashboardKind(ROLE_RESOURCE_MANAGER)).toBe("resource-manager")
     expect(dashboardKind(null)).toBe("member")
   })
 })
