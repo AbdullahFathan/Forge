@@ -1,3 +1,4 @@
+import { Link } from "react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -32,7 +33,9 @@ import {
 } from "@/features/holidays/api/holidays"
 import { HolidayFormDialog } from "@/features/holidays/components/holiday-form-dialog"
 import { toHolidayCreate, toHolidayPatch, type HolidayValues } from "@/features/holidays/schema"
-import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
+import { can } from "@/lib/auth"
+import { DEFAULT_PAGE_SIZE, PERMISSIONS } from "@/lib/constants"
+import { useSession } from "@/lib/session"
 import { ApiError } from "@/types/api"
 import type { HolidayPublic } from "@/types/resource"
 import { queryKeys } from "@/services/query/query-keys"
@@ -45,6 +48,8 @@ function yearOf(date: string) {
 
 export function HolidaysPage() {
   const queryClient = useQueryClient()
+  const permissions = useSession((state) => state.permissions)
+  const canViewCapacity = can(permissions, PERMISSIONS.capacityView)
   const currentYear = String(new Date().getFullYear())
   const [page, setPage] = useState(1)
   const [year, setYear] = useState(ALL)
@@ -126,7 +131,7 @@ export function HolidaysPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Holidays"
-        description="Weekdays listed here are not effective working days. Allocated hours on a holiday still count, so utilization can rise."
+        description="Dates on this list are the holidays used in the capacity formula. Weekends are already excluded. Personal leave is not modeled and is not subtracted. Allocated hours on a holiday still count, so utilization can rise."
         actions={
           <Button
             onClick={() => {
@@ -139,6 +144,13 @@ export function HolidaysPage() {
           </Button>
         }
       />
+      {canViewCapacity ? (
+        <p className="text-xs text-muted-foreground">
+          <Link className="underline-offset-4 hover:underline" to="/resources">
+            View capacity forecast
+          </Link>
+        </p>
+      ) : null}
       <FilterBar>
         <Select
           value={year}
@@ -194,7 +206,7 @@ export function HolidaysPage() {
         isLoading={list.isLoading}
         error={error}
         emptyTitle="No holidays yet"
-        emptyDescription="Add public or company holidays so capacity uses fewer effective days."
+        emptyDescription="Add public or company holidays so capacity uses fewer effective days. Personal leave is not part of this list."
         emptyAction={
           <Button
             onClick={() => {

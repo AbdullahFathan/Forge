@@ -7,6 +7,7 @@ import { listDepartments } from "@/features/departments/api/departments"
 import { AllocationsPanel } from "@/features/resources/components/allocations-panel"
 import { AvailabilityPanel } from "@/features/resources/components/availability-panel"
 import { CapacityFilterBar } from "@/features/resources/components/capacity-filter-bar"
+import { CapacityFormulaNote } from "@/features/resources/components/capacity-formula-note"
 import { ForecastPanel } from "@/features/resources/components/forecast-panel"
 import { MatrixPanel } from "@/features/resources/components/matrix-panel"
 import { listUsers } from "@/features/users/api/users"
@@ -71,7 +72,7 @@ export function ResourcesPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Resources"
-        description="Allocations, capacity forecast, matrix, and availability. Over-allocation is saved as a warning, not blocked."
+        description="Allocations, capacity forecast, matrix, and availability. Over-allocation is saved as a warning, not blocked. Capacity uses weekdays minus holidays, not personal leave."
       />
       <Tabs
         value={tab}
@@ -114,17 +115,23 @@ export function ResourcesPage() {
         {canView ? (
           <>
             <TabsContent value="forecast">
-              <ForecastPanel params={capacityParams} />
+              <div className="flex flex-col gap-3">
+                <CapacityFormulaNote />
+                <ForecastPanel params={capacityParams} />
+              </div>
             </TabsContent>
             <TabsContent value="matrix">
               <MatrixPanel params={capacityParams} />
             </TabsContent>
             <TabsContent value="availability">
-              <AvailabilityPanel
-                params={capacityParams}
-                canAllocate={canAllocate}
-                onAllocate={onAllocate}
-              />
+              <div className="flex flex-col gap-3">
+                <CapacityFormulaNote />
+                <AvailabilityPanel
+                  params={capacityParams}
+                  canAllocate={canAllocate}
+                  onAllocate={onAllocate}
+                />
+              </div>
             </TabsContent>
           </>
         ) : null}

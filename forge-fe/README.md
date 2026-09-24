@@ -17,7 +17,7 @@ The app talks to the WorkSpace HTTP API. Session access tokens stay in memory. R
 - Role-aware dashboard
 - Users and departments (permission-gated)
 - Projects, members, activity, and a task board
-- My workload, resource allocations, and capacity views
+- My workload, resource allocations, and capacity views. Forecast and availability use hours per day × (Monday–Friday minus company holidays); personal leave is not subtracted.
 - Notifications, report exports, and audit logs
 
 ## Run

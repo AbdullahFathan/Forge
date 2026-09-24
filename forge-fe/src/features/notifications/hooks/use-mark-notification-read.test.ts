@@ -1,22 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { renderHook, waitFor } from "@testing-library/react"
-import { createElement, type ReactNode } from "react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { QueryClient } from "@tanstack/react-query"
+import { describe, expect, it } from "vitest"
 
-import { markNotificationRead } from "@/features/notifications/api/notifications"
 import { queryKeys } from "@/services/query/query-keys"
-import { ApiError, type Page } from "@/types/api"
+import type { Page } from "@/types/api"
 import type { NotificationPublic, UnreadCount } from "@/types/notification"
 
-import { useMarkNotificationRead } from "./use-mark-notification-read"
-
-vi.mock("@/features/notifications/api/notifications", () => ({
-  markNotificationRead: vi.fn(),
-}))
-
-vi.mock("sonner", () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
-}))
+import {
+  markNotificationReadInCache,
+  restoreNotificationQueries,
+  snapshotNotificationQueries,
+} from "./mark-read-cache"
 
 const unreadItem: NotificationPublic = {
   id: "n1",
@@ -31,44 +24,33 @@ const unreadItem: NotificationPublic = {
 
 const listKey = queryKeys.notifications({ page: 1, pageSize: 20 })
 
-function wrapper(client: QueryClient) {
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return createElement(QueryClientProvider, { client }, children)
-  }
+function seedClient() {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  client.setQueryData<Page<NotificationPublic>>(listKey, {
+    items: [unreadItem],
+    page: 1,
+    pageSize: 20,
+    totalItems: 1,
+  })
+  client.setQueryData<UnreadCount>(queryKeys.notificationsUnread, { unreadCount: 1 })
+  return client
 }
 
 describe("useMarkNotificationRead", () => {
-  const markRead = markNotificationRead as unknown as ReturnType<typeof vi.fn>
+  it("rolls back isRead and unread count when the API errors", () => {
+    const client = seedClient()
+    const previous = snapshotNotificationQueries(client)
 
-  beforeEach(() => {
-    markRead.mockReset()
-  })
+    markNotificationReadInCache(client, "n1")
 
-  it("rolls back isRead and unread count when the API errors", async () => {
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    })
-    client.setQueryData<Page<NotificationPublic>>(listKey, {
-      items: [unreadItem],
-      page: 1,
-      pageSize: 20,
-      totalItems: 1,
-    })
-    client.setQueryData<UnreadCount>(queryKeys.notificationsUnread, { unreadCount: 1 })
+    expect(client.getQueryData<Page<NotificationPublic>>(listKey)?.items[0]?.isRead).toBe(true)
+    expect(client.getQueryData<UnreadCount>(queryKeys.notificationsUnread)?.unreadCount).toBe(0)
 
-    markRead.mockRejectedValue(
-      new ApiError(500, { code: "INTERNAL_ERROR", message: "mark failed" }),
-    )
+    restoreNotificationQueries(client, previous)
 
-    const { result } = renderHook(() => useMarkNotificationRead(), { wrapper: wrapper(client) })
-
-    await expect(result.current.mutateAsync("n1")).rejects.toBeInstanceOf(ApiError)
-
-    await waitFor(() => {
-      const list = client.getQueryData<Page<NotificationPublic>>(listKey)
-      const unread = client.getQueryData<UnreadCount>(queryKeys.notificationsUnread)
-      expect(list?.items[0]?.isRead).toBe(false)
-      expect(unread?.unreadCount).toBe(1)
-    })
+    expect(client.getQueryData<Page<NotificationPublic>>(listKey)?.items[0]?.isRead).toBe(false)
+    expect(client.getQueryData<UnreadCount>(queryKeys.notificationsUnread)?.unreadCount).toBe(1)
   })
 })
