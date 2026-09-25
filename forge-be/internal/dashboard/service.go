@@ -165,9 +165,9 @@ func (s *Service) ProjectManager(actor authctx.Principal) (PMDash, error) {
 	sort.Slice(team, func(i, j int) bool { return team[i].UtilizationPercent > team[j].UtilizationPercent })
 	var act []auditlog.Public
 	if s.audit != nil && len(ids) > 0 {
-		rows, _, _ := s.audit.List(auditlog.ListFilter{ProjectID: &ids[0], Page: 1, PageSize: 15})
-		for _, row := range rows {
-			act = append(act, auditlog.ToPublic(row))
+		rows, _, err := s.audit.List(auditlog.ListFilter{ProjectID: &ids[0], Page: 1, PageSize: 15})
+		if err == nil && len(rows) > 0 {
+			act = s.audit.Present(rows)
 		}
 	}
 	return PMDash{

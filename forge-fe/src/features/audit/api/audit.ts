@@ -7,7 +7,7 @@ import type { AuditLogPublic } from "@/types/audit"
 export type AuditListParams = {
   page: number
   pageSize: number
-  userId?: string
+  userName?: string
   entityType?: string
   action?: string
   from?: string

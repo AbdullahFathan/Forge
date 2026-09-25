@@ -242,7 +242,7 @@ function ProjectManagerView({ data }: { data: ProjectManagerDashboard }) {
       <EntityTable
         columns={[
           { key: "action", header: "Recent activity", cell: (row) => row.action },
-          { key: "entity", header: "Entity", cell: (row) => row.entityType },
+          { key: "entity", header: "Entity", cell: (row) => row.entityName || row.entityType },
           {
             key: "when",
             header: "When",

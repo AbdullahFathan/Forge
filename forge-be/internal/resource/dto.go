@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"workspace/internal/user"
 )
 
 type UserBrief struct {
@@ -34,6 +36,20 @@ type Page struct {
 	Page       int      `json:"page"`
 	PageSize   int      `json:"pageSize"`
 	TotalItems int64    `json:"totalItems"`
+}
+
+type PersonPublic struct {
+	ID             uuid.UUID `json:"id"`
+	Name           string    `json:"name"`
+	Email          string    `json:"email"`
+	DepartmentName *string   `json:"departmentName,omitempty"`
+}
+
+type PersonPage struct {
+	Items      []PersonPublic `json:"items"`
+	Page       int            `json:"page"`
+	PageSize   int            `json:"pageSize"`
+	TotalItems int64          `json:"totalItems"`
 }
 
 type HolidayPublic struct {
@@ -174,4 +190,12 @@ func ToPublic(a *Allocation, warnings []string, over bool) Public {
 
 func ToHolidayPublic(h *Holiday) HolidayPublic {
 	return HolidayPublic{ID: h.ID, Date: dateStr(h.Date), Name: h.Name, CreatedAt: h.CreatedAt}
+}
+
+func ToPersonPublic(u user.User) PersonPublic {
+	out := PersonPublic{ID: u.ID, Name: u.Name, Email: u.Email}
+	if u.Department != nil {
+		out.DepartmentName = &u.Department.Name
+	}
+	return out
 }

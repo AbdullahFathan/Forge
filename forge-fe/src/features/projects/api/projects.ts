@@ -9,6 +9,7 @@ export type ProjectListParams = {
   pageSize: number
   status?: string
   departmentId?: string
+  q?: string
 }
 
 export type ProjectWrite = {

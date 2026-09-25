@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useEffect } from "react"
 import { Controller, useForm } from "react-hook-form"
 
+import { PaginatedSearchSelect } from "@/components/common/paginated-search-select"
 import { applyApiErrors } from "@/lib/validators"
 import { toIsoDate } from "@/lib/date-range"
 import {
@@ -9,10 +10,11 @@ import {
   allocationFormSchema,
   type AllocationFormValues,
 } from "@/features/resources/schema"
+import { listProjects } from "@/features/projects/api/projects"
+import { listPeople } from "@/features/resources/api/allocations"
 import { ApiError } from "@/types/api"
-import type { AllocationPublic } from "@/types/resource"
+import type { AllocationPublic, PersonPublic } from "@/types/resource"
 import type { ProjectPublic } from "@/types/project"
-import type { PublicUser } from "@/types/user"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -33,13 +35,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
+import { queryKeys } from "@/services/query/query-keys"
 
 export function AllocationFormDialog({
   open,
   allocation,
-  users,
-  projects,
-  canPickUsers,
   pending,
   error,
   defaults,
@@ -48,12 +48,9 @@ export function AllocationFormDialog({
 }: {
   open: boolean
   allocation: AllocationPublic | null
-  users: PublicUser[]
-  projects: ProjectPublic[]
-  canPickUsers: boolean
   pending: boolean
   error: unknown
-  defaults?: Partial<AllocationFormValues>
+  defaults?: Partial<AllocationFormValues> & { userName?: string }
   onOpenChange: (open: boolean) => void
   onSubmit: (values: AllocationFormValues) => void
 }) {
@@ -107,46 +104,27 @@ export function AllocationFormDialog({
         <form className="flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
             <Field data-invalid={Boolean(form.formState.errors.userId) || undefined}>
-              <FieldLabel htmlFor="alloc-user">Person</FieldLabel>
-              {canPickUsers ? (
-                <Controller
-                  control={form.control}
-                  name="userId"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={(value) => field.onChange(value ?? "")}
-                      disabled={isEdit}
-                    >
-                      <SelectTrigger className="w-full" aria-invalid={Boolean(form.formState.errors.userId)}>
-                        <SelectValue placeholder="Select a person" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {users.map((user) => (
-                            <SelectItem key={user.id} value={user.id}>
-                              {user.name}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              ) : (
-                <Input
-                  id="alloc-user"
-                  disabled={isEdit}
-                  placeholder="User ID"
-                  aria-invalid={Boolean(form.formState.errors.userId)}
-                  {...form.register("userId")}
-                />
-              )}
-              {!canPickUsers && !isEdit ? (
-                <p className="text-xs text-muted-foreground">
-                  User list requires user.manage. Paste a user ID, or ask an administrator.
-                </p>
-              ) : null}
+              <FieldLabel>Person</FieldLabel>
+              <Controller
+                control={form.control}
+                name="userId"
+                render={({ field }) => (
+                  <PaginatedSearchSelect<PersonPublic>
+                    value={field.value}
+                    displayLabel={allocation?.user.name ?? defaults?.userName}
+                    placeholder="Select a person"
+                    searchPlaceholder="Search name or email"
+                    disabled={isEdit}
+                    invalid={Boolean(form.formState.errors.userId)}
+                    queryKeyPrefix={queryKeys.people({ picker: true })}
+                    fetchPage={(params) => listPeople(params)}
+                    getId={(item) => item.id}
+                    getLabel={(item) => item.name}
+                    getDescription={(item) => item.email}
+                    onChange={(id) => field.onChange(id)}
+                  />
+                )}
+              />
               <FieldError errors={[form.formState.errors.userId]} />
             </Field>
             <Field data-invalid={Boolean(form.formState.errors.projectId) || undefined}>
@@ -155,24 +133,19 @@ export function AllocationFormDialog({
                 control={form.control}
                 name="projectId"
                 render={({ field }) => (
-                  <Select
+                  <PaginatedSearchSelect<ProjectPublic>
                     value={field.value}
-                    onValueChange={(value) => field.onChange(value ?? "")}
+                    displayLabel={allocation?.projectName}
+                    placeholder="Select a project"
+                    searchPlaceholder="Search project name"
                     disabled={isEdit}
-                  >
-                    <SelectTrigger className="w-full" aria-invalid={Boolean(form.formState.errors.projectId)}>
-                      <SelectValue placeholder="Select a project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                    invalid={Boolean(form.formState.errors.projectId)}
+                    queryKeyPrefix={queryKeys.projects({ picker: true })}
+                    fetchPage={(params) => listProjects(params)}
+                    getId={(item) => item.id}
+                    getLabel={(item) => item.name}
+                    onChange={(id) => field.onChange(id)}
+                  />
                 )}
               />
               <FieldError errors={[form.formState.errors.projectId]} />

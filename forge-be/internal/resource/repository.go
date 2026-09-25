@@ -22,6 +22,12 @@ type ListFilter struct {
 	ActorID   uuid.UUID
 }
 
+type PeopleFilter struct {
+	Page     int
+	PageSize int
+	Q        string
+}
+
 type Repository struct {
 	db *gorm.DB
 }
@@ -183,6 +189,35 @@ func (r *Repository) DeleteHoliday(id uuid.UUID) error {
 		return apperr.ErrNotFound.WithMessage("holiday not found")
 	}
 	return nil
+}
+
+func (r *Repository) ListPeople(f PeopleFilter) ([]user.User, int64, error) {
+	if f.Page < 1 {
+		f.Page = 1
+	}
+	if f.PageSize < 1 || f.PageSize > 100 {
+		f.PageSize = 20
+	}
+	q := r.db.Preload("Department").Model(&user.User{}).Where("is_active = ?", true)
+	if term := strings.TrimSpace(f.Q); term != "" {
+		like := likeContains(term)
+		q = q.Where("name ILIKE ? ESCAPE '\\' OR email ILIKE ? ESCAPE '\\'", like, like)
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var rows []user.User
+	err := q.Order("name ASC").
+		Offset((f.Page - 1) * f.PageSize).
+		Limit(f.PageSize).
+		Find(&rows).Error
+	return rows, total, err
+}
+
+func likeContains(value string) string {
+	value = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+	return "%" + value + "%"
 }
 
 func (r *Repository) ListActiveUsers(departmentID *uuid.UUID, skill string) ([]user.User, error) {

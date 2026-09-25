@@ -10,7 +10,6 @@ import { CapacityFilterBar } from "@/features/resources/components/capacity-filt
 import { CapacityFormulaNote } from "@/features/resources/components/capacity-formula-note"
 import { ForecastPanel } from "@/features/resources/components/forecast-panel"
 import { MatrixPanel } from "@/features/resources/components/matrix-panel"
-import { listUsers } from "@/features/users/api/users"
 import { can } from "@/lib/auth"
 import { PERMISSIONS } from "@/lib/constants"
 import { defaultCapacityRange } from "@/lib/date-range"
@@ -27,7 +26,6 @@ export function ResourcesPage() {
   const permissions = useSession((state) => state.permissions)
   const canAllocate = can(permissions, PERMISSIONS.resourceAllocate)
   const canView = can(permissions, PERMISSIONS.capacityView)
-  const canPickUsers = can(permissions, PERMISSIONS.userManage)
   const canPickDepartment = can(permissions, PERMISSIONS.departmentManage)
 
   const range = defaultCapacityRange()
@@ -37,13 +35,9 @@ export function ResourcesPage() {
   const [granularity, setGranularity] = useState<"week" | "month">("week")
   const [departmentId, setDepartmentId] = useState(ALL)
   const [skill, setSkill] = useState("")
-  const [formDefaults, setFormDefaults] = useState<Partial<AllocationFormValues> | null>(null)
-
-  const users = useQuery({
-    queryKey: queryKeys.users({ page: 1, pageSize: 100, picker: true }),
-    queryFn: () => listUsers({ page: 1, pageSize: 100 }),
-    enabled: canPickUsers,
-  })
+  const [formDefaults, setFormDefaults] = useState<
+    (Partial<AllocationFormValues> & { userName?: string }) | null
+  >(null)
 
   const departments = useQuery({
     queryKey: queryKeys.departments({ page: 1, pageSize: 100, picker: true }),
@@ -64,7 +58,7 @@ export function ResourcesPage() {
   )
 
   const onAllocate = (row: AvailabilityItem) => {
-    setFormDefaults({ userId: row.userId })
+    setFormDefaults({ userId: row.userId, userName: row.name })
     setTab("allocations")
   }
 
@@ -89,8 +83,6 @@ export function ResourcesPage() {
         {canAllocate ? (
           <TabsContent value="allocations">
             <AllocationsPanel
-              users={users.data?.items ?? []}
-              canPickUsers={canPickUsers}
               formDefaults={formDefaults}
               onFormDefaultsConsumed={() => setFormDefaults(null)}
             />

@@ -146,7 +146,14 @@ export function ReportsPage() {
         {canPickDepartment ? (
           <div className="flex flex-col gap-1">
             <Label>Department</Label>
-            <Select value={departmentId} onValueChange={(value) => setDepartmentId(value ?? ALL)}>
+            <Select
+              items={{
+                [ALL]: "All departments",
+                ...Object.fromEntries((departments.data?.items ?? []).map((dept) => [dept.id, dept.name])),
+              }}
+              value={departmentId}
+              onValueChange={(value) => setDepartmentId(value ?? ALL)}
+            >
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>

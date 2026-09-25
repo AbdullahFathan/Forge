@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -154,6 +155,36 @@ func (f *fakeStore) DeleteHoliday(id uuid.UUID) error {
 	}
 	delete(f.holidays, id)
 	return nil
+}
+func (f *fakeStore) ListPeople(filter PeopleFilter) ([]user.User, int64, error) {
+	q := strings.ToLower(strings.TrimSpace(filter.Q))
+	var all []user.User
+	for _, u := range f.users {
+		if !u.IsActive {
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(u.Name), q) && !strings.Contains(strings.ToLower(u.Email), q) {
+			continue
+		}
+		all = append(all, *u)
+	}
+	total := int64(len(all))
+	page, size := filter.Page, filter.PageSize
+	if page < 1 {
+		page = 1
+	}
+	if size < 1 || size > 100 {
+		size = 20
+	}
+	start := (page - 1) * size
+	if start >= len(all) {
+		return nil, total, nil
+	}
+	end := start + size
+	if end > len(all) {
+		end = len(all)
+	}
+	return all[start:end], total, nil
 }
 func (f *fakeStore) ListActiveUsers(dept *uuid.UUID, skill string) ([]user.User, error) {
 	var out []user.User

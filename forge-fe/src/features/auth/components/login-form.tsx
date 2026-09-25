@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 
 import { loginSchema, type LoginValues } from "@/features/auth/schema"
+import { APP_NAME } from "@/lib/constants"
 import { useLogin } from "@/features/auth/hooks/use-login"
 import { ApiError } from "@/types/api"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -35,7 +36,7 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-lg shadow-sm">
       <CardHeader>
-        <CardTitle className="text-2xl tracking-tight">WorkSpace</CardTitle>
+        <CardTitle className="text-2xl tracking-tight">{APP_NAME}</CardTitle>
         <CardDescription>Sign in with the account an administrator created for you.</CardDescription>
       </CardHeader>
       <CardContent>

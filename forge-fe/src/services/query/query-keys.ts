@@ -14,6 +14,7 @@ export const queryKeys = {
     ["projects", id, "activity", params] as const,
   task: (id: string) => ["tasks", id] as const,
   taskComments: (id: string) => ["tasks", id, "comments"] as const,
+  people: (params: Record<string, unknown>) => ["resources", "people", params] as const,
   allocations: (params: Record<string, unknown>) => ["resources", "allocations", params] as const,
   capacity: (params: Record<string, unknown>) => ["resources", "capacity", params] as const,
   matrix: (params: Record<string, unknown>) => ["resources", "matrix", params] as const,

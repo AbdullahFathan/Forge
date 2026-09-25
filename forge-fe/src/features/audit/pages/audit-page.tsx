@@ -31,7 +31,7 @@ const ALL = "all"
 
 export function AuditPage() {
   const [page, setPage] = useState(1)
-  const [userId, setUserId] = useState("")
+  const [userName, setUserName] = useState("")
   const [entityType, setEntityType] = useState(ALL)
   const [action, setAction] = useState(ALL)
   const [from, setFrom] = useState("")
@@ -41,7 +41,7 @@ export function AuditPage() {
   const params = compactParams({
     page,
     pageSize: AUDIT_PAGE_SIZE,
-    userId: userId.trim() || undefined,
+    userName: userName.trim() || undefined,
     entityType: entityType === ALL ? undefined : entityType,
     action: action === ALL ? undefined : action,
     from: from || undefined,
@@ -54,7 +54,7 @@ export function AuditPage() {
       listAuditLogs({
         page,
         pageSize: AUDIT_PAGE_SIZE,
-        userId: userId.trim() || undefined,
+        userName: userName.trim() || undefined,
         entityType: entityType === ALL ? undefined : entityType,
         action: action === ALL ? undefined : action,
         from: from || undefined,
@@ -102,13 +102,13 @@ export function AuditPage() {
           <Input id="audit-to" type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1) }} />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="audit-user">User ID</Label>
+          <Label htmlFor="audit-user">User</Label>
           <Input
             id="audit-user"
-            value={userId}
-            placeholder="UUID"
+            value={userName}
+            placeholder="Name"
             onChange={(event) => {
-              setUserId(event.target.value)
+              setUserName(event.target.value)
               setPage(1)
             }}
           />
@@ -160,8 +160,8 @@ export function AuditPage() {
               </time>
             ),
           },
-          { key: "user", header: "User", cell: (row) => row.userId },
-          { key: "entity", header: "Entity", cell: (row) => `${row.entityType} · ${row.entityId.slice(0, 8)}` },
+          { key: "user", header: "User", cell: (row) => row.userName || "—" },
+          { key: "entity", header: "Entity", cell: (row) => row.entityName || row.entityType },
           { key: "action", header: "Action", cell: (row) => row.action },
           { key: "ip", header: "IP", cell: (row) => row.ipAddress || "—" },
         ]}

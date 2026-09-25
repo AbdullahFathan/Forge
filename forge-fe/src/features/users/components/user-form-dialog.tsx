@@ -134,7 +134,11 @@ export function UserFormDialog({
                 control={form.control}
                 name="roleId"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "")}>
+                  <Select
+                    items={Object.fromEntries(roles.map((role) => [role.id, role.name]))}
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value ?? "")}
+                  >
                     <SelectTrigger className="w-full" aria-invalid={Boolean(form.formState.errors.roleId)}>
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
@@ -158,7 +162,14 @@ export function UserFormDialog({
                 control={form.control}
                 name="departmentId"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={(value) => field.onChange(value ?? NONE)}>
+                  <Select
+                    items={{
+                      [NONE]: "No department",
+                      ...Object.fromEntries(departments.map((department) => [department.id, department.name])),
+                    }}
+                    value={field.value}
+                    onValueChange={(value) => field.onChange(value ?? NONE)}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="No department" />
                     </SelectTrigger>

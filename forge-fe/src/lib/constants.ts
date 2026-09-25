@@ -1,4 +1,4 @@
-export const APP_NAME = "WorkSpace"
+export const APP_NAME = "Forge"
 
 export const RETURN_TO_KEY = "workspace.returnTo"
 

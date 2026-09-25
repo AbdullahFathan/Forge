@@ -3,6 +3,7 @@ package auditlog
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -30,15 +31,12 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, err)
 		return
 	}
+	items := h.svc.Present(rows)
 	if r.URL.Query().Get("format") == "csv" {
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", `attachment; filename="audit-logs.csv"`)
-		_ = WriteCSV(w, rows)
+		_ = WriteCSV(w, items)
 		return
-	}
-	items := make([]Public, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, ToPublic(row))
 	}
 	response.JSON(w, http.StatusOK, Page{Items: items, Page: f.Page, PageSize: f.PageSize, TotalItems: total})
 }
@@ -49,6 +47,7 @@ func parseFilter(r *http.Request) (ListFilter, error) {
 		PageSize:   queryInt(r, "pageSize", 50),
 		EntityType: r.URL.Query().Get("entityType"),
 		Action:     r.URL.Query().Get("action"),
+		UserName:   strings.TrimSpace(r.URL.Query().Get("userName")),
 	}
 	if v := r.URL.Query().Get("userId"); v != "" {
 		id, err := uuid.Parse(v)

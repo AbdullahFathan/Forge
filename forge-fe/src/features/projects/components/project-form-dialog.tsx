@@ -186,7 +186,14 @@ export function ProjectFormDialog({
                   control={form.control}
                   name="departmentId"
                   render={({ field }) => (
-                    <Select value={field.value} onValueChange={(value) => field.onChange(value ?? NONE)}>
+                    <Select
+                      items={{
+                        [NONE]: "No department",
+                        ...Object.fromEntries(departments.map((department) => [department.id, department.name])),
+                      }}
+                      value={field.value}
+                      onValueChange={(value) => field.onChange(value ?? NONE)}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="No department" />
                       </SelectTrigger>

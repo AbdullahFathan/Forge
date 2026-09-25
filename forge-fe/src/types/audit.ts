@@ -3,9 +3,11 @@ export type AuditAction = "CREATED" | "UPDATED" | "DELETED"
 export type AuditLogPublic = {
   id: string
   userId: string
+  userName: string
   ipAddress: string
   entityType: string
   entityId: string
+  entityName: string
   projectId?: string | null
   action: string
   before?: unknown

@@ -163,6 +163,10 @@ export function ProjectsPage() {
         </Select>
         {canPickDepartment ? (
           <Select
+            items={{
+              [ALL]: "All departments",
+              ...Object.fromEntries((departments.data?.items ?? []).map((department) => [department.id, department.name])),
+            }}
             value={departmentId}
             onValueChange={(value) => {
               setDepartmentId(value ?? ALL)

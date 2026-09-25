@@ -6,6 +6,7 @@ import { getUnreadCount } from "@/features/notifications/api/notifications"
 import { queryKeys } from "@/services/query/query-keys"
 
 import { formatRole } from "@/lib/auth"
+import { APP_NAME } from "@/lib/constants"
 import { usePageCrumb } from "@/lib/breadcrumb"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -67,7 +68,7 @@ export function Navbar() {
   const unreadCount = unread.data?.unreadCount ?? 0
   const detailLabel = usePageCrumb((state) => state.detailLabel)
   const projectMatch = pathname.match(/^\/projects\/([^/]+)$/)
-  const current = crumbs[pathname] ?? (projectMatch ? "Projects" : "WorkSpace")
+  const current = crumbs[pathname] ?? (projectMatch ? "Projects" : APP_NAME)
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -76,7 +77,7 @@ export function Navbar() {
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink render={<Link to="/" />}>WorkSpace</BreadcrumbLink>
+            <BreadcrumbLink render={<Link to="/" />}>{APP_NAME}</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           {projectMatch ? (

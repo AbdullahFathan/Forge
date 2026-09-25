@@ -88,125 +88,136 @@ export function TaskFormDialog({
   }, [error, form])
 
   const message = error instanceof ApiError ? error.message : null
-  const title = isEdit ? "Edit task" : parentName ? `Subtask of ${parentName}` : "New task"
+  const title = isEdit ? "Edit task" : parentName ? `Subtask of ${parentName}` : "Create New Task"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        overlayClassName="bg-black/40 supports-backdrop-filter:backdrop-blur-sm"
+        className="max-h-[min(90vh,44rem)] overflow-y-auto sm:max-w-4xl sm:p-6"
+      >
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="text-lg">{title}</DialogTitle>
           <DialogDescription>Assignees must already be project members.</DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
-          <FieldGroup>
-            <Field data-invalid={Boolean(form.formState.errors.name) || undefined}>
-              <FieldLabel htmlFor="task-name">Name</FieldLabel>
-              <Input id="task-name" aria-invalid={Boolean(form.formState.errors.name)} {...form.register("name")} />
-              <FieldError errors={[form.formState.errors.name]} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="task-description">Description</FieldLabel>
-              <Textarea id="task-description" rows={3} {...form.register("description")} />
-            </Field>
-            <Field>
-              <FieldLabel>Status</FieldLabel>
-              <Controller
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "BACKLOG")}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {statusOptions.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {taskStatusMap[status]?.label ?? status}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Priority</FieldLabel>
-              <Controller
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "MEDIUM")}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {Object.entries(priorityMap).map(([value, visual]) => (
-                          <SelectItem key={value} value={value}>
-                            {visual.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="task-hours">Estimated hours</FieldLabel>
-              <Input id="task-hours" type="number" min={0} step="0.5" {...form.register("estimatedHours")} />
-            </Field>
-            <Field data-invalid={Boolean(form.formState.errors.startDate) || undefined}>
-              <FieldLabel htmlFor="task-start">Start date</FieldLabel>
-              <Input id="task-start" type="date" {...form.register("startDate")} />
-              <FieldError errors={[form.formState.errors.startDate]} />
-            </Field>
-            <Field data-invalid={Boolean(form.formState.errors.dueDate) || undefined}>
-              <FieldLabel htmlFor="task-due">Due date</FieldLabel>
-              <Input id="task-due" type="date" {...form.register("dueDate")} />
-              <FieldError errors={[form.formState.errors.dueDate]} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="task-labels">Labels</FieldLabel>
-              <Input id="task-labels" placeholder="api, frontend" {...form.register("labels")} />
-            </Field>
-            <Field>
-              <FieldLabel>Assignees</FieldLabel>
-              <Controller
-                control={form.control}
-                name="assigneeIds"
-                render={({ field }) => (
-                  <div className="flex max-h-40 flex-col gap-2 overflow-auto rounded-lg border p-2">
-                    {members.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">No project members to assign.</p>
-                    ) : (
-                      members.map((member) => {
-                        const checked = field.value.includes(member.userId)
-                        return (
-                          <Field key={member.userId} orientation="horizontal">
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={(value) => {
-                                const next = value
-                                  ? [...field.value, member.userId]
-                                  : field.value.filter((id) => id !== member.userId)
-                                field.onChange(next)
-                              }}
-                            />
-                            <FieldLabel>{member.name}</FieldLabel>
-                          </Field>
-                        )
-                      })
+        <form className="flex flex-col gap-5" onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="grid gap-6 md:grid-cols-2">
+            <FieldGroup>
+              <Field data-invalid={Boolean(form.formState.errors.name) || undefined}>
+                <FieldLabel htmlFor="task-name">Name</FieldLabel>
+                <Input id="task-name" aria-invalid={Boolean(form.formState.errors.name)} {...form.register("name")} />
+                <FieldError errors={[form.formState.errors.name]} />
+              </Field>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel>Status</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "BACKLOG")}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {statusOptions.map((status) => (
+                              <SelectItem key={status} value={status}>
+                                {taskStatusMap[status]?.label ?? status}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
                     )}
-                  </div>
-                )}
-              />
-            </Field>
-          </FieldGroup>
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel>Priority</FieldLabel>
+                  <Controller
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "MEDIUM")}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {Object.entries(priorityMap).map(([value, visual]) => (
+                              <SelectItem key={value} value={value}>
+                                {visual.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </Field>
+              </div>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field data-invalid={Boolean(form.formState.errors.startDate) || undefined}>
+                  <FieldLabel htmlFor="task-start">Start date</FieldLabel>
+                  <Input id="task-start" type="date" {...form.register("startDate")} />
+                  <FieldError errors={[form.formState.errors.startDate]} />
+                </Field>
+                <Field data-invalid={Boolean(form.formState.errors.dueDate) || undefined}>
+                  <FieldLabel htmlFor="task-due">Due date</FieldLabel>
+                  <Input id="task-due" type="date" {...form.register("dueDate")} />
+                  <FieldError errors={[form.formState.errors.dueDate]} />
+                </Field>
+              </div>
+              <Field className="min-h-0 flex-1">
+                <FieldLabel htmlFor="task-description">Description</FieldLabel>
+                <Textarea id="task-description" rows={8} className="min-h-40" {...form.register("description")} />
+              </Field>
+            </FieldGroup>
+            <FieldGroup>
+              <Field>
+                <FieldLabel>Assignees</FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="assigneeIds"
+                  render={({ field }) => (
+                    <div className="flex max-h-56 flex-col gap-2 overflow-auto rounded-lg border p-3">
+                      {members.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No project members to assign.</p>
+                      ) : (
+                        members.map((member) => {
+                          const checked = field.value.includes(member.userId)
+                          return (
+                            <Field key={member.userId} orientation="horizontal">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(value) => {
+                                  const next = value
+                                    ? [...field.value, member.userId]
+                                    : field.value.filter((id) => id !== member.userId)
+                                  field.onChange(next)
+                                }}
+                              />
+                              <FieldLabel>{member.name}</FieldLabel>
+                            </Field>
+                          )
+                        })
+                      )}
+                    </div>
+                  )}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="task-hours">Estimated hours</FieldLabel>
+                <Input id="task-hours" type="number" min={0} step="0.5" {...form.register("estimatedHours")} />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="task-labels">Labels</FieldLabel>
+                <Input id="task-labels" placeholder="api, frontend" {...form.register("labels")} />
+              </Field>
+            </FieldGroup>
+          </div>
           {message ? <p className="text-sm text-destructive">{message}</p> : null}
-          <DialogFooter>
+          <DialogFooter className="-mx-4 -mb-4 sm:-mx-6 sm:-mb-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

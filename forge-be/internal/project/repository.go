@@ -1,6 +1,7 @@
 package project
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,6 +15,7 @@ type ListFilter struct {
 	PageSize     int
 	Status       string
 	DepartmentID *uuid.UUID
+	Q            string
 	ScopeAll     bool
 	UserID       uuid.UUID
 }
@@ -70,6 +72,10 @@ func (r *Repository) List(f ListFilter) ([]Project, int64, error) {
 	}
 	if f.DepartmentID != nil {
 		q = q.Where("department_id = ?", *f.DepartmentID)
+	}
+	if term := strings.TrimSpace(f.Q); term != "" {
+		like := likeContains(term)
+		q = q.Where("name ILIKE ? ESCAPE '\\'", like)
 	}
 	if !f.ScopeAll {
 		q = q.Where(
@@ -266,4 +272,9 @@ func (r *Repository) MemberUserIDs(projectID uuid.UUID) ([]uuid.UUID, error) {
 	var ids []uuid.UUID
 	err := r.db.Model(&Member{}).Where("project_id = ?", projectID).Pluck("user_id", &ids).Error
 	return ids, err
+}
+
+func likeContains(value string) string {
+	value = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+	return "%" + value + "%"
 }

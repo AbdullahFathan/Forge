@@ -65,6 +65,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		Page:     queryInt(r, "page", 1),
 		PageSize: queryInt(r, "pageSize", 20),
 		Status:   strings.TrimSpace(r.URL.Query().Get("status")),
+		Q:        strings.TrimSpace(r.URL.Query().Get("q")),
 	}
 	if v := r.URL.Query().Get("departmentId"); v != "" {
 		id, err := uuid.Parse(v)
@@ -160,10 +161,7 @@ func (h *Handler) Activity(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, err)
 		return
 	}
-	items := make([]auditlog.Public, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, auditlog.ToPublic(row))
-	}
+	items := h.svc.PresentActivity(rows)
 	response.JSON(w, http.StatusOK, auditlog.Page{Items: items, Page: page, PageSize: pageSize, TotalItems: total})
 }
 

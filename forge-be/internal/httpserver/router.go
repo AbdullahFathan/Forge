@@ -156,6 +156,7 @@ func NewRouter(cfg *config.Config, log *zap.Logger, db *gorm.DB, rdb *redis.Clie
 		r.Route("/resources", func(r chi.Router) {
 			r.Group(func(r chi.Router) {
 				r.Use(middleware.Require(perm.ResourceAllocate))
+				r.Get("/people", resH.ListPeople)
 				r.Get("/allocations", resH.ListAllocations)
 				r.Post("/allocations", resH.CreateAllocation)
 				r.Patch("/allocations/{id}", resH.PatchAllocation)

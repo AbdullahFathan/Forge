@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,29 +66,33 @@ func (s *Service) List(f ListFilter) ([]Log, int64, error) {
 	}
 	q := s.db.Model(&Log{})
 	if f.From != nil {
-		q = q.Where("created_at >= ?", f.From.UTC())
+		q = q.Where("audit_logs.created_at >= ?", f.From.UTC())
 	}
 	if f.To != nil {
-		q = q.Where("created_at <= ?", f.To.UTC())
+		q = q.Where("audit_logs.created_at <= ?", f.To.UTC())
 	}
 	if f.UserID != nil {
-		q = q.Where("user_id = ?", *f.UserID)
+		q = q.Where("audit_logs.user_id = ?", *f.UserID)
+	}
+	if name := strings.TrimSpace(f.UserName); name != "" {
+		q = q.Joins("JOIN users ON users.id = audit_logs.user_id").
+			Where("users.name ILIKE ? ESCAPE '\\'", likeContains(name))
 	}
 	if f.EntityType != "" {
-		q = q.Where("entity_type = ?", f.EntityType)
+		q = q.Where("audit_logs.entity_type = ?", f.EntityType)
 	}
 	if f.Action != "" {
-		q = q.Where("action = ?", f.Action)
+		q = q.Where("audit_logs.action = ?", f.Action)
 	}
 	if f.ProjectID != nil {
-		q = q.Where("project_id = ?", *f.ProjectID)
+		q = q.Where("audit_logs.project_id = ?", *f.ProjectID)
 	}
 	var total int64
 	if err := q.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	var rows []Log
-	err := q.Order("created_at DESC").
+	err := q.Order("audit_logs.created_at DESC").
 		Offset((f.Page - 1) * f.PageSize).
 		Limit(f.PageSize).
 		Find(&rows).Error
@@ -106,18 +111,18 @@ func (s *Service) RecentForProject(projectID uuid.UUID, limit int) ([]Log, error
 	return rows, err
 }
 
-func WriteCSV(w io.Writer, rows []Log) error {
+func WriteCSV(w io.Writer, rows []Public) error {
 	cw := csv.NewWriter(w)
-	if err := cw.Write([]string{"created_at", "user_id", "ip_address", "entity_type", "entity_id", "action", "before", "after"}); err != nil {
+	if err := cw.Write([]string{"created_at", "user_name", "ip_address", "entity_type", "entity_name", "action", "before", "after"}); err != nil {
 		return err
 	}
 	for _, r := range rows {
 		if err := cw.Write([]string{
 			r.CreatedAt.UTC().Format(time.RFC3339),
-			r.UserID.String(),
+			r.UserName,
 			r.IPAddress,
 			r.EntityType,
-			r.EntityID.String(),
+			r.EntityName,
 			r.Action,
 			string(r.Before),
 			string(r.After),
@@ -127,4 +132,9 @@ func WriteCSV(w io.Writer, rows []Log) error {
 	}
 	cw.Flush()
 	return cw.Error()
+}
+
+func likeContains(value string) string {
+	value = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+	return "%" + value + "%"
 }

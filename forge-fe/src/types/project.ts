@@ -50,9 +50,11 @@ export type ProjectMember = {
 export type ProjectActivity = {
   id: string
   userId: string
+  userName?: string
   ipAddress: string
   entityType: string
   entityId: string
+  entityName?: string
   projectId?: string | null
   action: string
   before?: unknown

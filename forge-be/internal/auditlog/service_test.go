@@ -27,14 +27,28 @@ func TestMarshalRawMessageAndCSV(t *testing.T) {
 	require.Nil(t, marshal(nil))
 
 	var buf bytes.Buffer
-	err := WriteCSV(&buf, []Log{{
-		UserID:     uuid.MustParse("11111111-1111-1111-1111-111111111111"),
-		EntityID:   uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+	err := WriteCSV(&buf, []Public{{
+		UserName:   "Amina",
+		EntityName: "Ship API",
 		EntityType: "Task", Action: "UPDATED", Before: json.RawMessage(`{}`), After: json.RawMessage(`{"x":1}`),
 	}})
 	require.NoError(t, err)
-	require.Contains(t, buf.String(), "entity_type")
+	require.Contains(t, buf.String(), "entity_name")
+	require.Contains(t, buf.String(), "Amina")
+	require.Contains(t, buf.String(), "Ship API")
 	require.Contains(t, buf.String(), "UPDATED")
+}
+
+func TestLikeContainsEscapesWildcards(t *testing.T) {
+	require.Equal(t, `%100\%\_done%`, likeContains(`100%_done`))
+}
+
+func TestPresentWithoutDBKeepsRows(t *testing.T) {
+	id := uuid.New()
+	got := (&Service{}).Present([]Log{{ID: id, EntityType: "Project", Action: "CREATED"}})
+	require.Len(t, got, 1)
+	require.Equal(t, id, got[0].ID)
+	require.Empty(t, got[0].UserName)
 }
 
 func TestNoop(t *testing.T) {

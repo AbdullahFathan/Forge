@@ -22,7 +22,7 @@ export function ProjectActivityTab({ projectId }: { projectId: string }) {
     <EntityTable
       columns={[
         { key: "action", header: "Action", cell: (row) => row.action },
-        { key: "entity", header: "Entity", cell: (row) => `${row.entityType} · ${row.entityId.slice(0, 8)}` },
+        { key: "entity", header: "Entity", cell: (row) => row.entityName || row.entityType },
         {
           key: "when",
           header: "When",

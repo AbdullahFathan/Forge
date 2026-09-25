@@ -6,7 +6,21 @@ import type {
   AllocationPatch,
   AllocationPublic,
   AllocationWrite,
+  PersonPublic,
 } from "@/types/resource"
+
+export type PeopleListParams = {
+  page: number
+  pageSize: number
+  q?: string
+}
+
+export async function listPeople(params: PeopleListParams) {
+  const { data } = await getApiClient().get<Page<PersonPublic>>(endpoints.resourcesPeople, {
+    params: compactParams(params),
+  })
+  return data
+}
 
 export type AllocationListParams = {
   page: number

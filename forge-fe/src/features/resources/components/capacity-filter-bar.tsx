@@ -69,7 +69,14 @@ export function CapacityFilterBar({
         {canPickDepartment ? (
           <div className="flex flex-col gap-1">
             <Label>Department</Label>
-            <Select value={departmentId} onValueChange={(value) => onDepartmentId(value ?? ALL)}>
+            <Select
+              items={{
+                [ALL]: "All departments",
+                ...Object.fromEntries(departments.map((department) => [department.id, department.name])),
+              }}
+              value={departmentId}
+              onValueChange={(value) => onDepartmentId(value ?? ALL)}
+            >
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="All departments" />
               </SelectTrigger>

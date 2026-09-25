@@ -4,6 +4,7 @@ import { toast } from "sonner"
 
 import { EntityTable } from "@/components/common/entity-table"
 import { FilterBar } from "@/components/common/filter-bar"
+import { PaginatedSearchSelect } from "@/components/common/paginated-search-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,19 +19,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { listProjects } from "@/features/projects/api/projects"
 import {
   createAllocation,
   deleteAllocation,
   listAllocations,
+  listPeople,
   patchAllocation,
 } from "@/features/resources/api/allocations"
 import { AllocationFormDialog } from "@/features/resources/components/allocation-form-dialog"
@@ -45,37 +39,30 @@ import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
 import { isOverAllocated } from "@/lib/capacity-band"
 import { queryKeys } from "@/services/query/query-keys"
 import { ApiError } from "@/types/api"
-import type { AllocationPublic } from "@/types/resource"
-import type { PublicUser } from "@/types/user"
+import type { AllocationPublic, PersonPublic } from "@/types/resource"
+import type { ProjectPublic } from "@/types/project"
 
 const ALL = "all"
 
 export function AllocationsPanel({
-  users,
-  canPickUsers,
   formDefaults,
   onFormDefaultsConsumed,
 }: {
-  users: PublicUser[]
-  canPickUsers: boolean
-  formDefaults?: Partial<AllocationFormValues> | null
+  formDefaults?: (Partial<AllocationFormValues> & { userName?: string }) | null
   onFormDefaultsConsumed?: () => void
 }) {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [userId, setUserId] = useState(ALL)
+  const [userLabel, setUserLabel] = useState("")
   const [projectId, setProjectId] = useState(ALL)
+  const [projectLabel, setProjectLabel] = useState("")
   const [from, setFrom] = useState("")
   const [to, setTo] = useState("")
   const [open, setOpen] = useState(Boolean(formDefaults))
   const [editing, setEditing] = useState<AllocationPublic | null>(null)
   const [removing, setRemoving] = useState<AllocationPublic | null>(null)
   const [warning, setWarning] = useState<AllocationPublic | null>(null)
-
-  const projects = useQuery({
-    queryKey: queryKeys.projects({ page: 1, pageSize: 100, picker: true }),
-    queryFn: () => listProjects({ page: 1, pageSize: 100 }),
-  })
 
   const params = compactParams({
     page,
@@ -140,50 +127,43 @@ export function AllocationsPanel({
         this percent.
       </p>
       <FilterBar>
-        {canPickUsers ? (
-          <Select
-            value={userId}
-            onValueChange={(value) => {
-              setUserId(value ?? ALL)
-              setPage(1)
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All people" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value={ALL}>All people</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>
-                    {user.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        ) : null}
-        <Select
-          value={projectId}
-          onValueChange={(value) => {
-            setProjectId(value ?? ALL)
+        <PaginatedSearchSelect<PersonPublic>
+          value={userId === ALL ? "" : userId}
+          displayLabel={userLabel}
+          placeholder="All people"
+          searchPlaceholder="Search name or email"
+          className="w-56"
+          allowClear
+          clearLabel="All people"
+          queryKeyPrefix={queryKeys.people({ picker: true, filter: true })}
+          fetchPage={(params) => listPeople(params)}
+          getId={(item) => item.id}
+          getLabel={(item) => item.name}
+          getDescription={(item) => item.email}
+          onChange={(id, item) => {
+            setUserId(id || ALL)
+            setUserLabel(item?.name ?? "")
             setPage(1)
           }}
-        >
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="All projects" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value={ALL}>All projects</SelectItem>
-              {(projects.data?.items ?? []).map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+        />
+        <PaginatedSearchSelect<ProjectPublic>
+          value={projectId === ALL ? "" : projectId}
+          displayLabel={projectLabel}
+          placeholder="All projects"
+          searchPlaceholder="Search project name"
+          className="w-56"
+          allowClear
+          clearLabel="All projects"
+          queryKeyPrefix={queryKeys.projects({ picker: true, filter: true })}
+          fetchPage={(params) => listProjects(params)}
+          getId={(item) => item.id}
+          getLabel={(item) => item.name}
+          onChange={(id, item) => {
+            setProjectId(id || ALL)
+            setProjectLabel(item?.name ?? "")
+            setPage(1)
+          }}
+        />
         <div className="flex flex-col gap-1">
           <Label htmlFor="alloc-from">From</Label>
           <Input
@@ -288,9 +268,6 @@ export function AllocationsPanel({
       <AllocationFormDialog
         open={open || Boolean(formDefaults)}
         allocation={editing}
-        users={users}
-        projects={projects.data?.items ?? []}
-        canPickUsers={canPickUsers}
         pending={save.isPending}
         error={save.error}
         defaults={formDefaults ?? undefined}

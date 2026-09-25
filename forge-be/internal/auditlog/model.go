@@ -25,9 +25,11 @@ func (Log) TableName() string { return "audit_logs" }
 type Public struct {
 	ID         uuid.UUID       `json:"id"`
 	UserID     uuid.UUID       `json:"userId"`
+	UserName   string          `json:"userName"`
 	IPAddress  string          `json:"ipAddress"`
 	EntityType string          `json:"entityType"`
 	EntityID   uuid.UUID       `json:"entityId"`
+	EntityName string          `json:"entityName"`
 	ProjectID  *uuid.UUID      `json:"projectId,omitempty"`
 	Action     string          `json:"action"`
 	Before     json.RawMessage `json:"before,omitempty"`
@@ -56,6 +58,7 @@ type ListFilter struct {
 	From       *time.Time
 	To         *time.Time
 	UserID     *uuid.UUID
+	UserName   string
 	EntityType string
 	Action     string
 	ProjectID  *uuid.UUID

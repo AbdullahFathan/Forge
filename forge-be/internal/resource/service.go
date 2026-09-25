@@ -33,6 +33,7 @@ type Store interface {
 	SaveHoliday(*Holiday) error
 	DeleteHoliday(uuid.UUID) error
 	ListActiveUsers(*uuid.UUID, string) ([]user.User, error)
+	ListPeople(PeopleFilter) ([]user.User, int64, error)
 	GetUser(uuid.UUID) (*user.User, error)
 }
 
@@ -105,6 +106,10 @@ func (s *Service) List(actor authctx.Principal, f ListFilter) ([]Allocation, int
 	f.ActorID = actor.UserID
 	f.ScopeAll = s.scopeAll(actor)
 	return s.repo.List(f)
+}
+
+func (s *Service) ListPeople(f PeopleFilter) ([]user.User, int64, error) {
+	return s.repo.ListPeople(f)
 }
 
 func (s *Service) Get(actor authctx.Principal, id uuid.UUID) (*Allocation, []string, bool, error) {

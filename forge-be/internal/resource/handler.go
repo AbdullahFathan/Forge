@@ -50,6 +50,24 @@ type holidayPatchRequest struct {
 	Name *string `json:"name" validate:"omitempty,min=1,max=128"`
 }
 
+func (h *Handler) ListPeople(w http.ResponseWriter, r *http.Request) {
+	f := PeopleFilter{
+		Page:     queryInt(r, "page", 1),
+		PageSize: queryInt(r, "pageSize", 20),
+		Q:        strings.TrimSpace(r.URL.Query().Get("q")),
+	}
+	rows, total, err := h.svc.ListPeople(f)
+	if err != nil {
+		response.Error(w, err)
+		return
+	}
+	items := make([]PersonPublic, 0, len(rows))
+	for _, u := range rows {
+		items = append(items, ToPersonPublic(u))
+	}
+	response.JSON(w, http.StatusOK, PersonPage{Items: items, Page: f.Page, PageSize: f.PageSize, TotalItems: total})
+}
+
 func (h *Handler) ListAllocations(w http.ResponseWriter, r *http.Request) {
 	actor, ok := authctx.User(r.Context())
 	if !ok {

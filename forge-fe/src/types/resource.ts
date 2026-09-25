@@ -2,6 +2,13 @@ export type AllocationRole = "LEAD" | "MEMBER" | "VIEWER"
 
 export type CapacityBand = "GREEN" | "YELLOW" | "RED"
 
+export type PersonPublic = {
+  id: string
+  name: string
+  email: string
+  departmentName?: string | null
+}
+
 export type AllocationUserBrief = {
   id: string
   name: string

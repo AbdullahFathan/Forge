@@ -312,6 +312,10 @@ paths:
         - in: query
           name: departmentId
           schema: { type: string, format: uuid }
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Case-insensitive match on project name
       responses:
         "200":
           description: Paged projects with completionPercent
@@ -583,6 +587,27 @@ paths:
       responses:
         "200":
           description: Active allocations, assigned tasks, next 4 weeks load
+  /resources/people:
+    get:
+      tags: [resources]
+      security: [{ BearerAuth: [] }]
+      summary: Search active people for allocation pickers (resource.allocate)
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Case-insensitive match on name or email
+        - in: query
+          name: page
+          schema: { type: integer }
+        - in: query
+          name: pageSize
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Paged people (id, name, email, departmentName)
+        "403":
+          description: Forbidden
   /resources/allocations:
     get:
       tags: [resources]

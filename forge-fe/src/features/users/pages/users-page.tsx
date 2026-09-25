@@ -112,6 +112,10 @@ export function UsersPage() {
       />
       <FilterBar>
         <Select
+          items={{
+            [ALL]: "All roles",
+            ...Object.fromEntries((roles.data ?? []).map((role) => [role.id, role.name])),
+          }}
           value={roleId}
           onValueChange={(value) => {
             setRoleId(value ?? ALL)
@@ -133,6 +137,10 @@ export function UsersPage() {
           </SelectContent>
         </Select>
         <Select
+          items={{
+            [ALL]: "All departments",
+            ...Object.fromEntries((departments.data?.items ?? []).map((department) => [department.id, department.name])),
+          }}
           value={departmentId}
           onValueChange={(value) => {
             setDepartmentId(value ?? ALL)

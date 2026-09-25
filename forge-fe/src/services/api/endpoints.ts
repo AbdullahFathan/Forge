@@ -20,6 +20,7 @@ export const endpoints = {
   taskDependencies: (id: string) => `/tasks/${id}/dependencies`,
   taskDependency: (taskId: string, depId: string) => `/tasks/${taskId}/dependencies/${depId}`,
   taskComments: (id: string) => `/tasks/${id}/comments`,
+  resourcesPeople: "/resources/people",
   resourcesAllocations: "/resources/allocations",
   resourceAllocation: (id: string) => `/resources/allocations/${id}`,
   resourcesCapacity: "/resources/capacity",

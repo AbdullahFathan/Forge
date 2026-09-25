@@ -49,6 +49,7 @@ type TaskStats interface {
 type ActivityLister interface {
 	RecentForProject(projectID uuid.UUID, limit int) ([]auditlog.Log, error)
 	List(auditlog.ListFilter) ([]auditlog.Log, int64, error)
+	Present([]auditlog.Log) []auditlog.Public
 }
 
 type Notifier interface {
@@ -409,10 +410,7 @@ func (s *Service) summary(p *Project) (Summary, error) {
 		if err != nil {
 			return Summary{}, err
 		}
-		act = make([]auditlog.Public, 0, len(rows))
-		for _, row := range rows {
-			act = append(act, auditlog.ToPublic(row))
-		}
+		act = s.activity.Present(rows)
 	}
 	return Summary{
 		Public:      ToPublic(p, pct),
@@ -420,6 +418,17 @@ func (s *Service) summary(p *Project) (Summary, error) {
 		MemberCount: n,
 		Activity:    act,
 	}, nil
+}
+
+func (s *Service) PresentActivity(rows []auditlog.Log) []auditlog.Public {
+	if s.activity == nil {
+		out := make([]auditlog.Public, 0, len(rows))
+		for _, row := range rows {
+			out = append(out, auditlog.ToPublic(row))
+		}
+		return out
+	}
+	return s.activity.Present(rows)
 }
 
 func (s *Service) Activity(actor authctx.Principal, projectID uuid.UUID, page, pageSize int) ([]auditlog.Log, int64, error) {
