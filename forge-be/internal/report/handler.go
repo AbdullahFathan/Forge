@@ -106,7 +106,11 @@ func (h *Handler) respond(w http.ResponseWriter, r *http.Request, name string, h
 		return
 	}
 	if format == "pdf" {
-		body, err := WritePDF(name, headers, csvRows)
+		pdfHeaders, pdfRows := headers, csvRows
+		if name == "project-status" {
+			pdfHeaders, pdfRows = omitColumns(headers, csvRows, "id", "ownerId")
+		}
+		body, err := WritePDF(name, pdfHeaders, pdfRows)
 		if err != nil {
 			response.Error(w, err)
 			return

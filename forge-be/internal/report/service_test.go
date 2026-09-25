@@ -11,6 +11,16 @@ import (
 	"workspace/pkg/authctx"
 )
 
+func TestOmitColumns(t *testing.T) {
+	headers, rows := omitColumns(
+		[]string{"id", "name", "ownerId", "ownerName"},
+		[][]string{{"uuid", "Alpha", "oid", "Ada"}},
+		"id", "ownerId",
+	)
+	require.Equal(t, []string{"name", "ownerName"}, headers)
+	require.Equal(t, [][]string{{"Alpha", "Ada"}}, rows)
+}
+
 func TestWriteCSVAndPDF(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, WriteCSV(&buf, []string{"a", "b"}, [][]string{{"1", "2"}}))

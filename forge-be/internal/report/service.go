@@ -223,6 +223,33 @@ func WriteCSV(w io.Writer, headers []string, rows [][]string) error {
 	return cw.Error()
 }
 
+func omitColumns(headers []string, rows [][]string, names ...string) ([]string, [][]string) {
+	skip := make(map[string]struct{}, len(names))
+	for _, n := range names {
+		skip[n] = struct{}{}
+	}
+	keep := make([]int, 0, len(headers))
+	outH := make([]string, 0, len(headers))
+	for i, h := range headers {
+		if _, drop := skip[h]; drop {
+			continue
+		}
+		keep = append(keep, i)
+		outH = append(outH, h)
+	}
+	outR := make([][]string, len(rows))
+	for r, row := range rows {
+		nr := make([]string, 0, len(keep))
+		for _, i := range keep {
+			if i < len(row) {
+				nr = append(nr, row[i])
+			}
+		}
+		outR[r] = nr
+	}
+	return outH, outR
+}
+
 func WritePDF(title string, headers []string, rows [][]string) ([]byte, error) {
 	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.SetTitle(title, false)
