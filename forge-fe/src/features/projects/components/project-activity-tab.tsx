@@ -4,6 +4,7 @@ import { useState } from "react"
 import { EntityTable } from "@/components/common/entity-table"
 import { JsonDiff } from "@/components/common/json-diff"
 import { listProjectActivity } from "@/features/projects/api/projects"
+import { formatAuditAction } from "@/lib/audit-diff"
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants"
 import { ApiError } from "@/types/api"
 import { queryKeys } from "@/services/query/query-keys"
@@ -21,13 +22,27 @@ export function ProjectActivityTab({ projectId }: { projectId: string }) {
   return (
     <EntityTable
       columns={[
-        { key: "action", header: "Action", cell: (row) => row.action },
-        { key: "entity", header: "Entity", cell: (row) => row.entityName || row.entityType },
         {
           key: "when",
           header: "When",
-          className: "px-3 py-2 font-mono tabular-nums",
-          cell: (row) => new Date(row.createdAt).toLocaleString(),
+          className: "px-3 py-2 font-mono tabular-nums whitespace-nowrap",
+          cell: (row) => (
+            <time dateTime={row.createdAt}>{new Date(row.createdAt).toLocaleString()}</time>
+          ),
+        },
+        { key: "who", header: "Who", cell: (row) => row.userName || "—" },
+        { key: "action", header: "Action", cell: (row) => formatAuditAction(row.action) },
+        {
+          key: "entity",
+          header: "Entity",
+          cell: (row) => (
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate">{row.entityName || row.entityType}</span>
+              {row.entityName && row.entityType ? (
+                <span className="text-xs text-muted-foreground">{row.entityType}</span>
+              ) : null}
+            </span>
+          ),
         },
       ]}
       rows={list.data?.items ?? []}

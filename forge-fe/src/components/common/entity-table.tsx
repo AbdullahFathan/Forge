@@ -79,7 +79,7 @@ export function EntityTable<T>({
       <Table>
         <TableHeader>
           <TableRow>
-            {renderExpanded ? <TableHead className="w-20 px-3 py-2">Detail</TableHead> : null}
+            {renderExpanded ? <TableHead className="w-28 px-3 py-2">Changes</TableHead> : null}
             {columns.map((column) => (
               <TableHead key={column.key} className="px-3 py-2">
                 {column.header}
@@ -110,9 +110,10 @@ export function EntityTable<T>({
                             type="button"
                             variant="ghost"
                             size="sm"
+                            aria-expanded={open}
                             onClick={() => setExpandedId(open ? null : id)}
                           >
-                            {open ? "Hide" : "Show"}
+                            {open ? "Hide" : "Changes"}
                           </Button>
                         </TableCell>
                       ) : null}
@@ -124,7 +125,7 @@ export function EntityTable<T>({
                     </TableRow>
                     {open && renderExpanded ? (
                       <TableRow>
-                        <TableCell colSpan={colSpan} className="px-3 py-2">
+                        <TableCell colSpan={colSpan} className="whitespace-normal! px-3 py-2">
                           {renderExpanded(row)}
                         </TableCell>
                       </TableRow>

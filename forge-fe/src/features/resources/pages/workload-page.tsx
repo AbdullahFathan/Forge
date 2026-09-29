@@ -50,6 +50,11 @@ export function WorkloadPage() {
   })
 
   const data = workload.data
+  const personLabel = (value: unknown) => {
+    const id = typeof value === "string" ? value : ""
+    if (!id || id === SELF) return sessionUser?.name ? `Me (${sessionUser.name})` : "Me"
+    return users.data?.items.find((user) => user.id === id)?.name ?? "Selected person"
+  }
   const error =
     workload.error instanceof ApiError ? workload.error.message : workload.error ? "Could not load workload" : null
 
@@ -64,8 +69,8 @@ export function WorkloadPage() {
           <div className="flex max-w-sm flex-col gap-1">
             <Label>Person</Label>
             <Select value={userId} onValueChange={(value) => setUserId(value ?? SELF)}>
-              <SelectTrigger>
-                <SelectValue />
+              <SelectTrigger className="w-full" aria-label="Person">
+                <SelectValue>{personLabel}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>

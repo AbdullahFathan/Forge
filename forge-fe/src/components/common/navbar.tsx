@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { BellIcon } from "lucide-react"
+import { BellIcon, LogOut, UserRound } from "lucide-react"
 import { Link, useLocation } from "react-router"
 
 import { getUnreadCount } from "@/features/notifications/api/notifications"
@@ -58,7 +58,7 @@ function initials(name: string) {
 
 export function Navbar() {
   const { pathname } = useLocation()
-  const { user, role, logout } = useAuth()
+  const { user, role, logout, isLoggingOut } = useAuth()
   const unread = useQuery({
     queryKey: queryKeys.notificationsUnread,
     queryFn: getUnreadCount,
@@ -69,6 +69,12 @@ export function Navbar() {
   const detailLabel = usePageCrumb((state) => state.detailLabel)
   const projectMatch = pathname.match(/^\/projects\/([^/]+)$/)
   const current = crumbs[pathname] ?? (projectMatch ? "Projects" : APP_NAME)
+  const roleLabel = formatRole(role)
+  const roleRepeatsName =
+    roleLabel.toLowerCase() === (user?.name ?? "").trim().toLowerCase()
+  const accountMeta = [roleRepeatsName ? null : roleLabel, user?.departmentName]
+    .filter(Boolean)
+    .join(" · ")
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -120,18 +126,41 @@ export function Navbar() {
           />
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="flex flex-col gap-0.5">
-                <span>{user?.name}</span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {formatRole(role)}
-                  {user?.departmentName ? ` · ${user.departmentName}` : ""}
+              <DropdownMenuLabel className="flex items-center gap-2 px-1.5 py-1.5 font-normal text-foreground">
+                <Avatar>
+                  <AvatarFallback>{user ? initials(user.name) : "?"}</AvatarFallback>
+                </Avatar>
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm font-medium">
+                    {user?.name ?? "Account"}
+                  </span>
+                  {user?.email ? (
+                    <span className="truncate text-xs font-normal text-muted-foreground">
+                      {user.email}
+                    </span>
+                  ) : null}
+                  {accountMeta ? (
+                    <span className="truncate text-xs font-normal text-muted-foreground">
+                      {accountMeta}
+                    </span>
+                  ) : null}
                 </span>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem render={<Link to="/users/me" />}>Profile</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => logout()}>Log out</DropdownMenuItem>
+              <DropdownMenuItem className="min-h-8" render={<Link to="/users/me" />}>
+                <UserRound aria-hidden />
+                Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="min-h-8"
+                disabled={isLoggingOut}
+                onClick={() => logout()}
+              >
+                <LogOut aria-hidden />
+                {isLoggingOut ? "Signing out…" : "Log out"}
+              </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>

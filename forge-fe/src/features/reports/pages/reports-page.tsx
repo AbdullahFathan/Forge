@@ -172,7 +172,14 @@ export function ReportsPage() {
         ) : null}
         <div className="flex flex-col gap-1">
           <Label>Project</Label>
-          <Select value={projectId} onValueChange={(value) => setProjectId(value ?? ALL)}>
+          <Select
+            items={{
+              [ALL]: "All projects",
+              ...Object.fromEntries((projects.data?.items ?? []).map((project) => [project.id, project.name])),
+            }}
+            value={projectId}
+            onValueChange={(value) => setProjectId(value ?? ALL)}
+          >
             <SelectTrigger className="w-56">
               <SelectValue />
             </SelectTrigger>

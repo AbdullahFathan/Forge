@@ -94,15 +94,15 @@ export function ProjectFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden sm:max-w-lg">
+        <DialogHeader className="shrink-0 pr-8">
           <DialogTitle>{isEdit ? "Edit project" : "New project"}</DialogTitle>
           <DialogDescription>
             {isEdit ? "Update fields the API allows. Illegal status jumps are rejected." : "Creates a project you own. Archive is used later instead of delete."}
           </DialogDescription>
         </DialogHeader>
-        <form className="flex flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
-          <FieldGroup>
+        <form className="flex min-h-0 flex-col gap-4" onSubmit={form.handleSubmit(onSubmit)}>
+          <FieldGroup className="min-h-0 overflow-y-auto pr-1">
             <Field data-invalid={Boolean(form.formState.errors.name) || undefined}>
               <FieldLabel htmlFor="project-name">Name</FieldLabel>
               <Input id="project-name" aria-invalid={Boolean(form.formState.errors.name)} {...form.register("name")} />
@@ -112,73 +112,81 @@ export function ProjectFormDialog({
               <FieldLabel htmlFor="project-description">Description</FieldLabel>
               <Textarea id="project-description" rows={3} {...form.register("description")} />
             </Field>
-            <Field data-invalid={Boolean(form.formState.errors.status) || undefined}>
-              <FieldLabel>Status</FieldLabel>
-              <Controller
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "DRAFT")}>
-                    <SelectTrigger className="w-full" aria-invalid={Boolean(form.formState.errors.status)}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {statusOptions.map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {projectStatusMap[status]?.label ?? status}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <FieldError errors={[form.formState.errors.status]} />
-            </Field>
-            <Field>
-              <FieldLabel>Priority</FieldLabel>
-              <Controller
-                control={form.control}
-                name="priority"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "MEDIUM")}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {Object.entries(priorityMap).map(([value, visual]) => (
-                          <SelectItem key={value} value={value}>
-                            {visual.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field data-invalid={Boolean(form.formState.errors.startDate) || undefined}>
-              <FieldLabel htmlFor="project-start">Start date</FieldLabel>
-              <Input
-                id="project-start"
-                type="date"
-                aria-invalid={Boolean(form.formState.errors.startDate)}
-                {...form.register("startDate")}
-              />
-              <FieldError errors={[form.formState.errors.startDate]} />
-            </Field>
-            <Field data-invalid={Boolean(form.formState.errors.targetEndDate) || undefined}>
-              <FieldLabel htmlFor="project-end">Target end date</FieldLabel>
-              <Input
-                id="project-end"
-                type="date"
-                aria-invalid={Boolean(form.formState.errors.targetEndDate)}
-                {...form.register("targetEndDate")}
-              />
-              <FieldError errors={[form.formState.errors.targetEndDate]} />
-            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field data-invalid={Boolean(form.formState.errors.status) || undefined}>
+                <FieldLabel>Status</FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "DRAFT")}>
+                      <SelectTrigger className="w-full" aria-invalid={Boolean(form.formState.errors.status)}>
+                        <SelectValue>
+                          {(value) => projectStatusMap[String(value ?? "")]?.label ?? "Status"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {statusOptions.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {projectStatusMap[status]?.label ?? status}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <FieldError errors={[form.formState.errors.status]} />
+              </Field>
+              <Field>
+                <FieldLabel>Priority</FieldLabel>
+                <Controller
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={(value) => field.onChange(value ?? "MEDIUM")}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue>
+                          {(value) => priorityMap[String(value ?? "")]?.label ?? "Priority"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {Object.entries(priorityMap).map(([value, visual]) => (
+                            <SelectItem key={value} value={value}>
+                              {visual.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </Field>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field data-invalid={Boolean(form.formState.errors.startDate) || undefined}>
+                <FieldLabel htmlFor="project-start">Start date</FieldLabel>
+                <Input
+                  id="project-start"
+                  type="date"
+                  aria-invalid={Boolean(form.formState.errors.startDate)}
+                  {...form.register("startDate")}
+                />
+                <FieldError errors={[form.formState.errors.startDate]} />
+              </Field>
+              <Field data-invalid={Boolean(form.formState.errors.targetEndDate) || undefined}>
+                <FieldLabel htmlFor="project-end">Target end date</FieldLabel>
+                <Input
+                  id="project-end"
+                  type="date"
+                  aria-invalid={Boolean(form.formState.errors.targetEndDate)}
+                  {...form.register("targetEndDate")}
+                />
+                <FieldError errors={[form.formState.errors.targetEndDate]} />
+              </Field>
+            </div>
             {canPickDepartment ? (
               <Field>
                 <FieldLabel>Department</FieldLabel>
@@ -218,7 +226,7 @@ export function ProjectFormDialog({
             </Field>
           </FieldGroup>
           {message ? <p className="text-sm text-destructive">{message}</p> : null}
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
